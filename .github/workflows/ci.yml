@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: lint + types + tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Set up Python 3.12
+        run: uv python install 3.12
+
+      - name: Install project + dev deps
+        run: uv pip install --system -e ".[dev]"
+
+      - name: Ruff (lint del código fuente — gate de release)
+        run: ruff check src/
+
+      - name: Mypy (strict sobre los paquetes fuente)
+        run: python -m mypy
+
+      - name: Pytest (unit; la integración se skipea sin secrets)
+        # --cov-fail-under=90 vive en pyproject (addopts): gate duro de merge.
+        run: python -m pytest -q
