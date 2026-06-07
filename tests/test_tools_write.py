@@ -1,5 +1,7 @@
+import json
 from decimal import Decimal
 from unittest.mock import MagicMock
+from binance.exceptions import BinanceAPIException
 from kainext_binance_mcp.models import OrderPreview
 from kainext_binance_mcp.tools.write import spot_order_propose, spot_order_status
 
@@ -43,6 +45,29 @@ def test_cancel_propose_registers_when_cancelable():
     out = cancel_order_propose(ipc=ipc, client=client, symbol="BTCUSDT", order_id=1, env="testnet")
     assert out.error is None and out.intent_id == "intent-c1"
     ipc.register_cancel.assert_called_once()
+
+
+class _Resp:
+    def __init__(self, text):
+        self.text = text
+        self.request = None
+
+
+def test_cancel_propose_handles_get_order_raising_without_traceback():
+    """A2: client.get_order lanza un BinanceAPIException REAL (-2013) → cancel_order_propose
+    devuelve OrderProposal con error mapeado y scrubbeado, sin reventar ni crear intent."""
+    ipc = MagicMock()
+    client = MagicMock()
+    client.API_KEY = "READ_KEY_LEAK_abc"; client.API_SECRET = "READ_SECRET_def"
+    raw = json.dumps({"code": -2013, "msg": "Order does not exist for key READ_KEY_LEAK_abc"})
+    client.get_order.side_effect = BinanceAPIException(_Resp(raw), 400, raw)  # tipo real
+    from kainext_binance_mcp.tools.write import cancel_order_propose
+    out = cancel_order_propose(ipc=ipc, client=client, symbol="BTCUSDT", order_id=1, env="testnet")
+    assert out.intent_id is None
+    assert out.error is not None and out.error.code == -2013
+    assert "READ_KEY_LEAK_abc" not in out.error.message  # scrubbeado
+    assert "no existe" in out.error.message.lower()      # mapeado (-2013)
+    ipc.register_cancel.assert_not_called()
 
 
 def test_cancel_status_relays():

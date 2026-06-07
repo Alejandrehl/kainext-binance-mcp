@@ -2,12 +2,21 @@
 from __future__ import annotations
 from decimal import Decimal
 from typing import Any, Protocol
+from kainext_binance_mcp.errors import map_binance_error, scrub_secrets
 from kainext_binance_mcp.models import (
     CanonicalOrder, Env, OrderProposal, OrderPreview, OrderStatus, OrderType,
     Side, TimeInForce, ToolError,
 )
 
 _NOT_CANCELABLE = {"FILLED", "CANCELED", "EXPIRED"}
+
+
+def _client_secrets(client: Any) -> list[str]:
+    """Key/secret del client para scrubbear mensajes de error (python-binance los guarda
+    en client.API_KEY / client.API_SECRET). Sólo strings reales (con un MagicMock en tests
+    los atributos no son str y se descartan)."""
+    return [v for v in (getattr(client, "API_KEY", None), getattr(client, "API_SECRET", None))
+            if isinstance(v, str) and v]
 
 
 class IpcClient(Protocol):
@@ -36,8 +45,17 @@ def spot_order_status(*, ipc: IpcClient, intent_id: str) -> OrderStatus:
 def cancel_order_propose(*, ipc: Any, client: Any, symbol: str, order_id: int,
                          env: Env) -> OrderProposal:
     """Re-consulta el estado de la orden ANTES de proponer la cancelación: si ya está
-    llenada/cancelada/expirada devuelve un OrderProposal con error (sin crear intent)."""
-    current = client.get_order(symbol=symbol, orderId=order_id)
+    llenada/cancelada/expirada devuelve un OrderProposal con error (sin crear intent).
+    A2: get_order puede lanzar (-2013/red) → se devuelve OrderProposal con error mapeado
+    y scrubbeado, nunca un traceback crudo."""
+    try:
+        current = client.get_order(symbol=symbol, orderId=order_id)
+    except Exception as e:  # noqa: BLE001 — sanitizado abajo
+        code = getattr(e, "code", -1)
+        msg = getattr(e, "message", str(e))
+        code = int(code) if isinstance(code, int) else -1
+        message = scrub_secrets(map_binance_error(code, str(msg)), _client_secrets(client))
+        return OrderProposal(error=ToolError(code=code, message=message))
     if current.get("status") in _NOT_CANCELABLE:
         return OrderProposal(error=ToolError(
             code=-2011,
