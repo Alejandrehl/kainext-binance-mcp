@@ -2,7 +2,16 @@
 from __future__ import annotations
 import hashlib
 from typing import Any, Callable
+from requests.exceptions import ConnectionError as ReqConnError, Timeout as ReqTimeout
 from kainext_binance_mcp.models import CanonicalOrder
+
+# C1: python-binance corre sobre `requests`; un timeout/caída de red real lanza
+# requests.exceptions.{Timeout,ConnectionError}, que NO son subclases de los builtins
+# TimeoutError/ConnectionError. Si sólo capturáramos los builtins, el query-before-retry
+# nunca correría ante un fallo de red real → riesgo de doble orden. Capturamos AMBOS.
+_RETRYABLE_NETWORK_ERRORS: tuple[type[BaseException], ...] = (
+    TimeoutError, ConnectionError, ReqTimeout, ReqConnError,
+)
 
 
 def derive_client_order_id(order: CanonicalOrder, intent_id: str, nonce: str) -> str:
@@ -27,7 +36,7 @@ def place_order_idempotent(
     origClientOrderId. `get_order` devuelve el dict de la orden o None (-2013)."""
     try:
         return place()
-    except (TimeoutError, ConnectionError):
+    except _RETRYABLE_NETWORK_ERRORS:
         existing = get_order(symbol, client_order_id)
         if existing is not None:
             return existing  # la orden SÍ se colocó pese al timeout
