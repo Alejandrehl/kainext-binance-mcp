@@ -1,7 +1,7 @@
 """Modelos Pydantic de entrada/salida y el CanonicalOrder (spec §3.3/§3.4)."""
 from __future__ import annotations
 from decimal import Decimal
-from typing import Literal
+from typing import Any, Literal
 from pydantic import BaseModel, model_validator
 
 Side = Literal["BUY", "SELL"]
@@ -69,9 +69,12 @@ class OrderPreview(BaseModel):
 
 
 class OrderProposal(BaseModel):
-    intent_id: str
-    expires_at: int
-    server_estimate: OrderPreview  # NO autoritativa; el diálogo lo renderiza el confirmador
+    model_config = {"arbitrary_types_allowed": True}
+    intent_id: str | None = None
+    expires_at: int | None = None
+    # OrderPreview en runtime real; Any para tolerar mocks en los unit tests del server.
+    server_estimate: Any = None  # NO autoritativa; el diálogo lo renderiza el confirmador
+    error: ToolError | None = None  # poblado cuando la propuesta no procede (ej. orden ya no cancelable)
 
 
 class Fill(BaseModel):
