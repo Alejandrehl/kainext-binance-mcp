@@ -75,12 +75,18 @@ def _trend_value(ema_fast: float, ema_slow: float) -> tuple[float, str]:
 
 def _momentum_value(rsi: float) -> tuple[float, str]:
     value = _clip((_RSI_NEUTRAL - rsi) / _RSI_HALF_SPAN)
+    # La nota describe el lean real (signo/magnitud de value) para nunca contradecir la
+    # contribución: <30/>70 son los extremos clásicos; en el medio, el sesgo es proporcional.
     if rsi < 30.0:
         note = f"RSI {rsi:.1f} en sobreventa: posible rebote (momentum a favor)."
     elif rsi > 70.0:
         note = f"RSI {rsi:.1f} en sobrecompra: riesgo de corrección (momentum en contra)."
+    elif rsi < 45.0:
+        note = f"RSI {rsi:.1f} bajo el punto medio: leve sesgo a favor."
+    elif rsi > 55.0:
+        note = f"RSI {rsi:.1f} sobre el punto medio: leve sesgo en contra."
     else:
-        note = f"RSI {rsi:.1f} en zona media: momentum neutro."
+        note = f"RSI {rsi:.1f} en zona neutra: momentum ~neutro."
     return value, note
 
 

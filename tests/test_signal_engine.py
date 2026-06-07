@@ -307,3 +307,25 @@ def test_factor_notes_are_human_readable() -> None:
     s = _gen(ema_fast=11.0, ema_slow=10.0, rsi=25.0, macd_hist=0.3, bb_pos=0.1, sentiment=0.6)
     for f in s.factors:
         assert isinstance(f.note, str) and f.note  # no vacío
+
+
+@pytest.mark.parametrize(
+    "rsi, fragment",
+    [
+        (25.0, "sobreventa"),
+        (34.0, "leve sesgo a favor"),
+        (50.0, "neutra"),
+        (60.0, "leve sesgo en contra"),
+        (80.0, "sobrecompra"),
+    ],
+)
+def test_momentum_note_never_contradicts_lean(rsi: float, fragment: str) -> None:
+    # La nota de momentum describe el sesgo real (no contradice la contribución).
+    s = _gen(rsi=rsi)
+    f = _factor(s, "momentum")
+    assert fragment in f.note
+    # Coherencia signo nota ↔ signo contribución (salvo el neutro exacto).
+    if "a favor" in f.note or "sobreventa" in f.note:
+        assert f.contribution > 0
+    elif "en contra" in f.note or "sobrecompra" in f.note:
+        assert f.contribution < 0

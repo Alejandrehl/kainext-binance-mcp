@@ -14,11 +14,12 @@ from kainext_binance_mcp.market import MarketEstimator, SymbolFilters, parse_sym
 from kainext_binance_mcp.models import (
     AccountInfo, AssetBalance, BacktestResult, Env, IndicatorResult, Kline,
     NewsItem, OpenOrder, OrderProposal, OrderStatus, OrderType, PriceTicker,
-    SentimentResult, Side, Ticker24h, TimeInForce,
+    SentimentResult, Side, Signal, Ticker24h, TimeInForce,
 )
 from kainext_binance_mcp.tools import marketdata as marketdata_tools
 from kainext_binance_mcp.tools import news as news_tools
 from kainext_binance_mcp.tools import read as read_tools
+from kainext_binance_mcp.tools import signals as signals_tools
 from kainext_binance_mcp.tools import write as write_tools
 
 # Enum de estrategias de backtest (capa 2, spec §5). Viaja al schema de la tool.
@@ -54,11 +55,11 @@ def _make_estimator(client: object) -> MarketEstimator:
 
 def _register_tools(client: object, ipc: IpcClient, market: MarketEstimator,
                     *, is_testnet: bool) -> None:
-    """Registra las 15 tools. Cada @mcp.tool() delega en las funciones ya testeadas
-    de tools/read.py, tools/write.py, tools/marketdata.py y tools/news.py. Las read y
-    las de market data (capa 2) reciben `client`; las de noticias (capa 3) no reciben
-    client (RSS público); las write reciben `ipc`/`market`/`client` según corresponda.
-    El server NUNCA ejecuta; las capas 2 y 3 son 100% read-only."""
+    """Registra las 17 tools. Cada @mcp.tool() delega en las funciones ya testeadas
+    de tools/read.py, tools/write.py, tools/marketdata.py, tools/news.py y tools/signals.py.
+    Las read, las de market data (capa 2) y las de señales (capa 4) reciben `client`; las de
+    noticias (capa 3) no reciben client (RSS público); las write reciben `ipc`/`market`/`client`
+    según corresponda. El server NUNCA ejecuta; las capas 2, 3 y 4 son 100% read-only."""
 
     # --- 5 tools de lectura (read key) ---
     @mcp.tool()
@@ -121,6 +122,21 @@ def _register_tools(client: object, ipc: IpcClient, market: MarketEstimator,
     def binance_get_sentiment(asset: str, window_hours: int = 24) -> SentimentResult:
         """Sentiment CRUDO agregado de un activo sobre una ventana (léxico, no es predicción)."""
         return news_tools.get_sentiment(asset, window_hours=window_hours)
+
+    # --- 2 tools de capa 4: motor de señales (read key, 100% read-only / PROPONE) ---
+    # Combinan indicadores (capa 2) + sentiment (capa 3) + ATR en una señal transparente.
+    # PROPONEN; NUNCA colocan órdenes (eso es capa 1 con gate humano).
+    @mcp.tool()
+    def binance_generate_signal(symbol: str, interval: str = "1h",
+                                threshold: float = 0.15) -> Signal:
+        """Señal compuesta y transparente de un par: dirección + score + rationale por factor
+        + niveles de riesgo (ATR). PROPONE, no ejecuta; cada factor expone su contribución."""
+        return signals_tools.generate_signal_tool(client, symbol, interval, threshold=threshold)
+
+    @mcp.tool()
+    def binance_scan_signals(symbols: list[str], interval: str = "1h") -> list[Signal]:
+        """Genera señales para una watchlist y las rankea por score (dónde mirar, no auto-operar)."""
+        return signals_tools.scan_signals(client, symbols, interval)
 
     # --- 4 tools de escritura two-phase (server propone; NUNCA ejecuta) ---
     # Los Literal (Side/OrderType/Env/TimeInForce) viajan al schema de la tool y los
