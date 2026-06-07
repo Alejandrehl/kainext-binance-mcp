@@ -13,3 +13,14 @@ def test_render_shows_env_and_effective_values():
 def test_parse_confirm_and_cancel():
     assert parse_osascript_result(returncode=0, stdout="button returned:Confirmar") is True
     assert parse_osascript_result(returncode=1, stdout="") is False  # cancel/esc/timeout
+
+def test_parse_real_osascript_formats_with_giving_up():
+    # Con `giving up after`, osascript anexa ", gave up:false" — el formato REAL del clic.
+    assert parse_osascript_result(
+        returncode=0, stdout="button returned:Confirmar, gave up:false\n") is True
+    assert parse_osascript_result(
+        returncode=0, stdout="button returned:Cancelar, gave up:false\n") is False
+    # Timeout (giving up) => gave up:true, aunque exit sea 0.
+    assert parse_osascript_result(returncode=0, stdout="gave up:true\n") is False
+    # Cancelar/Esc con cancel button => exit != 0 (User canceled -128).
+    assert parse_osascript_result(returncode=1, stdout="") is False

@@ -34,8 +34,13 @@ def render_cancel_dialog_text(*, symbol: str, order_id: int, env: str,
 
 
 def parse_osascript_result(*, returncode: int, stdout: str) -> bool:
-    # Confirmar = exit 0 + 'button returned:Confirmar'. Cualquier otra cosa = NO ejecutar.
-    return returncode == 0 and stdout.strip().endswith(":Confirmar")
+    # Confirmar = exit 0, sin timeout, y 'button returned:Confirmar' presente.
+    # OJO: con `giving up after`, osascript anexa ", gave up:false" al stdout
+    # (ej. "button returned:Confirmar, gave up:false") → NO usar endswith.
+    # Cancelar/Esc => exit != 0 ("User canceled. (-128)"); timeout => "gave up:true".
+    if returncode != 0 or "gave up:true" in stdout:
+        return False
+    return "button returned:Confirmar" in stdout
 
 
 def ask_confirmation(text: str) -> bool:
