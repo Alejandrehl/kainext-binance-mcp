@@ -56,3 +56,48 @@ def test_pending_count_counts_only_live_pending():
     assert s.pending_count() == 1
     t["v"] = 2000  # todo expira
     assert s.pending_count() == 0
+
+
+def test_concurrent_register_and_count_is_thread_safe():
+    """B1: register desde muchos hilos en paralelo no pierde intents (lock protege el store)."""
+    import threading
+    s = IntentStore(ttl_seconds=300, now=lambda: 1000)
+    n_threads = 50
+
+    def worker():
+        s.register(_order())
+
+    threads = [threading.Thread(target=worker) for _ in range(n_threads)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert len(s._items) == n_threads
+    assert s.pending_count() == n_threads
+
+
+def test_concurrent_mark_only_one_winner_on_terminal():
+    """B1: many threads racing to mark_executed/mark_failed → exactamente uno gana (one-shot),
+    el resto ve IntentStateError. El lock evita estados corruptos."""
+    import threading
+    s = IntentStore(ttl_seconds=300, now=lambda: 1000)
+    iid = s.register(_order())
+    res = OrderResult(order_id=1, client_order_id="kbm_x", status="FILLED",
+                      executed_qty=Decimal("0.0002"), cummulative_quote_qty=Decimal("10"),
+                      env="testnet")
+    wins = []
+
+    def worker():
+        try:
+            s.mark_executed(iid, res)
+            wins.append(1)
+        except IntentStateError:
+            pass
+
+    threads = [threading.Thread(target=worker) for _ in range(20)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert len(wins) == 1  # one-shot respetado bajo concurrencia
+    assert s.get(iid).state == "executed"
