@@ -2,7 +2,7 @@
 from __future__ import annotations
 import os
 from decimal import Decimal
-from typing import Mapping
+from typing import Literal, Mapping
 
 from mcp.server.fastmcp import FastMCP
 
@@ -12,11 +12,16 @@ from kainext_binance_mcp.guard import assert_read_key_safe, perms_from_api
 from kainext_binance_mcp.ipc import IpcClient
 from kainext_binance_mcp.market import MarketEstimator, SymbolFilters, parse_symbol_filters
 from kainext_binance_mcp.models import (
-    AccountInfo, AssetBalance, Env, OpenOrder, OrderProposal, OrderStatus,
-    OrderType, PriceTicker, Side, TimeInForce,
+    AccountInfo, AssetBalance, BacktestResult, Env, IndicatorResult, Kline,
+    OpenOrder, OrderProposal, OrderStatus, OrderType, PriceTicker, Side,
+    Ticker24h, TimeInForce,
 )
+from kainext_binance_mcp.tools import marketdata as marketdata_tools
 from kainext_binance_mcp.tools import read as read_tools
 from kainext_binance_mcp.tools import write as write_tools
+
+# Enum de estrategias de backtest (capa 2, spec §5). Viaja al schema de la tool.
+Strategy = Literal["ema_cross", "rsi_threshold"]
 
 mcp = FastMCP("binance")
 
@@ -48,9 +53,10 @@ def _make_estimator(client: object) -> MarketEstimator:
 
 def _register_tools(client: object, ipc: IpcClient, market: MarketEstimator,
                     *, is_testnet: bool) -> None:
-    """Registra las 9 tools. Cada @mcp.tool() delega en las funciones ya testeadas
-    de tools/read.py y tools/write.py. Las read reciben `client`; las write reciben
-    `ipc`/`market`/`client` según corresponda. El server NUNCA ejecuta."""
+    """Registra las 13 tools. Cada @mcp.tool() delega en las funciones ya testeadas
+    de tools/read.py, tools/write.py y tools/marketdata.py. Las read y las de market
+    data (capa 2) reciben `client`; las write reciben `ipc`/`market`/`client` según
+    corresponda. El server NUNCA ejecuta; capa 2 es 100% read-only."""
 
     # --- 5 tools de lectura (read key) ---
     @mcp.tool()
@@ -77,6 +83,29 @@ def _register_tools(client: object, ipc: IpcClient, market: MarketEstimator,
     def binance_get_account_info() -> AccountInfo:
         """Info de cuenta (canTrade, comisiones; permisos de key sólo en mainnet)."""
         return read_tools.get_account_info(client, is_testnet=is_testnet)
+
+    # --- 4 tools de capa 2: market data + indicadores (read key, 100% read-only) ---
+    @mcp.tool()
+    def binance_get_klines(symbol: str, interval: str, limit: int = 500) -> list[Kline]:
+        """Velas OHLCV de un par/intervalo (OHLCV en Decimal). limit ≤ 1000."""
+        return marketdata_tools.get_klines(client, symbol, interval, limit)
+
+    @mcp.tool()
+    def binance_get_ticker_24h(symbol: str) -> Ticker24h:
+        """Stats rolling 24h (cambio %, high/low, volumen, último precio)."""
+        return marketdata_tools.get_ticker_24h(client, symbol)
+
+    @mcp.tool()
+    def binance_compute_indicators(symbol: str, interval: str, indicators: list[str],
+                                   limit: int = 500) -> IndicatorResult:
+        """RSI/MACD/EMA/Bollinger/ATR sobre las klines (valores float, alineados a velas)."""
+        return marketdata_tools.compute_indicators(client, symbol, interval, indicators, limit)
+
+    @mcp.tool()
+    def binance_backtest(symbol: str, interval: str, strategy: Strategy,
+                         limit: int = 500) -> BacktestResult:
+        """Backtest liviano SIN LOOKAHEAD de una regla simple (ema_cross/rsi_threshold)."""
+        return marketdata_tools.backtest(client, symbol, interval, strategy, limit)
 
     # --- 4 tools de escritura two-phase (server propone; NUNCA ejecuta) ---
     # Los Literal (Side/OrderType/Env/TimeInForce) viajan al schema de la tool y los

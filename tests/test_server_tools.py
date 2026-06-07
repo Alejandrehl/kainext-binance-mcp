@@ -93,3 +93,44 @@ def test_write_tools_delegate_to_ipc_and_never_execute():
 
     cst = _fn(tm, "binance_cancel_order_status")("iid-1")
     assert cst.state == "pending"
+
+
+def _binance_klines(n=40):
+    base = 1717000000000
+    rows = []
+    for i in range(n):
+        price = 100.0 + i
+        rows.append([base + i * 3600000, f"{price:.2f}", f"{price + 1:.2f}",
+                     f"{price - 1:.2f}", f"{price + 0.5:.2f}", "10.0",
+                     base + i * 3600000 + 3599999, "1000.0", 50, "5.0", "500.0", "0"])
+    return rows
+
+
+def test_capa2_marketdata_tools_delegate_to_client():
+    """Las 4 tools read-only de capa 2 quedan registradas y delegan en el client read."""
+    client = MagicMock()
+    client.get_klines.return_value = _binance_klines(40)
+    client.get_ticker.return_value = {
+        "symbol": "BTCUSDT", "priceChangePercent": "2.5", "highPrice": "51000",
+        "lowPrice": "49000", "volume": "1234.5", "lastPrice": "50500"}
+    tm = _register(client, MagicMock(), MagicMock(), is_testnet=True)
+
+    from kainext_binance_mcp.models import (
+        BacktestResult, IndicatorResult, Kline, Ticker24h,
+    )
+
+    klines = _fn(tm, "binance_get_klines")("BTCUSDT", "1h", 40)
+    assert len(klines) == 40 and isinstance(klines[0], Kline)
+
+    ticker = _fn(tm, "binance_get_ticker_24h")("BTCUSDT")
+    assert isinstance(ticker, Ticker24h) and ticker.symbol == "BTCUSDT"
+
+    indi = _fn(tm, "binance_compute_indicators")("BTCUSDT", "1h", ["rsi", "ema"], 40)
+    assert isinstance(indi, IndicatorResult) and "rsi" in indi.indicators
+
+    res = _fn(tm, "binance_backtest")("BTCUSDT", "1h", "ema_cross", 40)
+    assert isinstance(res, BacktestResult) and res.strategy == "ema_cross"
+
+    # Read-only: jamás coloca ni cancela órdenes.
+    client.create_order.assert_not_called()
+    client.cancel_order.assert_not_called()
