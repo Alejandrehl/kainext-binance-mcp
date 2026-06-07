@@ -1,5 +1,6 @@
 from decimal import Decimal
 from unittest.mock import MagicMock
+from kainext_binance_mcp.models import OrderPreview
 from kainext_binance_mcp.tools.write import spot_order_propose, spot_order_status
 
 
@@ -7,7 +8,9 @@ def test_propose_registers_canonical_and_returns_intent():
     ipc = MagicMock()
     ipc.register.return_value = ("intent-1", 1700000000)  # (intent_id, expires_at)
     market = MagicMock()  # pre-validación local
-    market.estimate.return_value = MagicMock(feasible=True)
+    market.estimate.return_value = OrderPreview(
+        effective_qty=Decimal("0.0002"), price=None, est_notional=Decimal("10"),
+        est_commission=Decimal("0.01"), env="testnet", feasible=True)
     out = spot_order_propose(ipc=ipc, market=market, symbol="BTCUSDT", side="BUY",
                              type="MARKET", quote_quantity=Decimal("10"), env="testnet")
     assert out.intent_id == "intent-1"
