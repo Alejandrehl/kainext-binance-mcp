@@ -13,15 +13,6 @@ _CODE_MESSAGES: dict[int, str] = {
 }
 
 
-class BinanceMcpError(Exception):
-    """Error de dominio con código y mensaje ya sanitizado."""
-
-    def __init__(self, code: int | str, message: str) -> None:
-        self.code = code
-        self.message = message
-        super().__init__(f"[{code}] {message}")
-
-
 def map_binance_error(code: int, raw_msg: str) -> str:
     base = _CODE_MESSAGES.get(code)
     if base is not None:
