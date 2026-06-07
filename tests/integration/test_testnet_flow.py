@@ -4,7 +4,8 @@ Ejercita el flujo real de los dos procesos (spec §5.2) con clientes REALES de
 Binance testnet, pero con el clic del diálogo **stubeado** (nunca abre osascript):
 
     get_balance
-      → spot_order_propose (LIMIT BUY a -50% del precio: NO se llena)
+      → spot_order_propose (LIMIT BUY a un precio bajo el mercado pero DENTRO de la
+        banda PERCENT_PRICE_BY_SIDE: NO se llena, pero Binance la acepta)
       → spot_order_status hasta "executed" (orden colocada, queda NEW/abierta)
       → get_open_orders (la orden aparece)
       → cancel_order_propose + cancel_order_status → CANCELED
@@ -36,7 +37,7 @@ import os
 import tempfile
 import threading
 import time
-from decimal import Decimal
+from decimal import ROUND_CEILING, ROUND_DOWN, Decimal
 
 import pytest
 
@@ -77,6 +78,41 @@ def _poll_status(status_fn, intent_id: str, *, want: set[str], timeout: float = 
 
 # Compartido entre fixture y helper de poll (se setea en la fixture).
 _IPC = None
+
+
+def _limit_buy_params(client, symbol: str) -> tuple[Decimal, Decimal]:
+    """Devuelve (price, qty) para una LIMIT BUY que NO se llena pero que Binance acepta.
+
+    El precio debe quedar (a) por DEBAJO del precio actual (para que no haya fill y
+    podamos cancelarla) y (b) DENTRO de la banda `PERCENT_PRICE_BY_SIDE`, cuyo piso para
+    una BUY es `bidMultiplierDown` (relativo al precio promedio, no al last). Usamos
+    `price = last * max(bidMultiplierDown * 1.02, 0.80)` y lo redondeamos HACIA ARRIBA
+    al tickSize para nunca caer bajo la banda; luego ajustamos qty para respetar
+    `LOT_SIZE.stepSize`, `minQty` y `NOTIONAL.minNotional`.
+    """
+    info = client.get_symbol_info(symbol)
+    f = {x["filterType"]: x for x in info["filters"]}
+    tick = Decimal(f["PRICE_FILTER"]["tickSize"])
+    step = Decimal(f["LOT_SIZE"]["stepSize"])
+    min_qty = Decimal(f["LOT_SIZE"]["minQty"])
+    notional_f = f.get("NOTIONAL") or f.get("MIN_NOTIONAL") or {}
+    min_notional = Decimal(notional_f.get("minNotional", "0"))
+    ppbs = f.get("PERCENT_PRICE_BY_SIDE", {})
+    bid_mult_down = Decimal(ppbs.get("bidMultiplierDown", "0"))
+
+    last_price = Decimal(client.get_symbol_ticker(symbol=symbol)["price"])
+    factor = max(bid_mult_down * Decimal("1.02"), Decimal("0.80"))
+    raw_price = last_price * factor
+    # Redondeo HACIA ARRIBA al tickSize: nunca quedar por debajo de la banda.
+    price = (raw_price / tick).to_integral_value(rounding=ROUND_CEILING) * tick
+
+    # qty: respeta stepSize y minQty, y garantiza price*qty >= minNotional.
+    qty = max(min_qty, Decimal("0.001"))
+    qty = (qty / step).to_integral_value(rounding=ROUND_DOWN) * step
+    if min_notional > 0 and price * qty < min_notional:
+        needed = (min_notional / price / step).to_integral_value(rounding=ROUND_CEILING) * step
+        qty = max(qty, needed)
+    return price, qty
 
 
 @pytest.fixture
@@ -136,12 +172,13 @@ def test_full_testnet_flow(testnet_stack):
     balances = read_tools.get_balance(read_client)
     assert isinstance(balances, list)
 
-    # 2) spot_order_propose — LIMIT BUY a un precio 50% BAJO el mercado → NO se llena.
-    price_now = Decimal(read_client.get_symbol_ticker(symbol=_SYMBOL)["price"])
-    far_price = price_now / 2
+    # 2) spot_order_propose — LIMIT BUY a un precio bajo el mercado pero DENTRO de la
+    #    banda PERCENT_PRICE_BY_SIDE → NO se llena, pero Binance la acepta (no -1013).
+    price, qty = _limit_buy_params(read_client, _SYMBOL)
+    print(f"[itest] LIMIT BUY {qty} {_SYMBOL} @ {price} (no debería llenarse)")
     proposal = write_tools.spot_order_propose(
         ipc=ipc, market=server_market, symbol=_SYMBOL, side="BUY", type="LIMIT",
-        env="testnet", quantity=Decimal("0.001"), price=far_price, time_in_force="GTC",
+        env="testnet", quantity=qty, price=price, time_in_force="GTC",
     )
     assert proposal.intent_id, "propose debe devolver un intent_id"
 
