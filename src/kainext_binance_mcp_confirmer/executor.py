@@ -1,7 +1,7 @@
 """Ejecución autoritativa en el confirmador (spec §4.3/§4.6). Sólo corre tras el clic."""
 from __future__ import annotations
 from decimal import Decimal
-from typing import Any, Callable
+from typing import Any, Callable, cast
 from binance.client import Client
 from kainext_binance_mcp.models import CanonicalOrder, OrderResult, ToolError, Fill
 from kainext_binance_mcp.idempotency import derive_client_order_id, place_order_idempotent
@@ -84,12 +84,12 @@ def _create(client: Client, order: CanonicalOrder, preview: Any, cid: str) -> di
         params.update(quoteOrderQty=str(order.quote_quantity))
     else:
         params.update(quantity=str(preview.effective_qty))
-    return client.create_order(**params)
+    return cast("dict[str, Any]", client.create_order(**params))
 
 
 def _get_order(client: Client, symbol: str, cid: str) -> dict[str, Any] | None:
     try:
-        return client.get_order(symbol=symbol, origClientOrderId=cid)
+        return cast("dict[str, Any]", client.get_order(symbol=symbol, origClientOrderId=cid))
     except Exception:  # noqa: BLE001
         return None
 

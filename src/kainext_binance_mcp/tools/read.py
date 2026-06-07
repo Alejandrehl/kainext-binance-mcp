@@ -1,10 +1,13 @@
 """Tools de lectura spot (read key). Spec §3.1."""
 from __future__ import annotations
 from decimal import Decimal
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from binance.client import Client
 from kainext_binance_mcp.models import AssetBalance, OpenOrder, PriceTicker
 from kainext_binance_mcp.guard import perms_from_api
+
+if TYPE_CHECKING:
+    from kainext_binance_mcp.models import AccountInfo
 
 
 def get_balance(client: Client) -> list[AssetBalance]:

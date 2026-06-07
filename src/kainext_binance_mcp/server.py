@@ -10,7 +10,11 @@ from kainext_binance_mcp.client import make_client
 from kainext_binance_mcp.config import Settings, load_server_settings
 from kainext_binance_mcp.guard import assert_read_key_safe, perms_from_api
 from kainext_binance_mcp.ipc import IpcClient
-from kainext_binance_mcp.market import MarketEstimator, parse_symbol_filters
+from kainext_binance_mcp.market import MarketEstimator, SymbolFilters, parse_symbol_filters
+from kainext_binance_mcp.models import (
+    AccountInfo, AssetBalance, Env, OpenOrder, OrderProposal, OrderStatus,
+    OrderType, PriceTicker, Side, TimeInForce,
+)
 from kainext_binance_mcp.tools import read as read_tools
 from kainext_binance_mcp.tools import write as write_tools
 
@@ -33,7 +37,7 @@ def bootstrap(env: Mapping[str, str]) -> tuple[Settings, object]:
 
 
 def _make_estimator(client: object) -> MarketEstimator:
-    def get_filters(symbol: str):
+    def get_filters(symbol: str) -> SymbolFilters:
         return parse_symbol_filters(client.get_symbol_info(symbol))  # type: ignore[attr-defined]
 
     def get_price(symbol: str) -> Decimal:
@@ -50,37 +54,39 @@ def _register_tools(client: object, ipc: IpcClient, market: MarketEstimator,
 
     # --- 5 tools de lectura (read key) ---
     @mcp.tool()
-    def binance_get_balance():
+    def binance_get_balance() -> list[AssetBalance]:
         """Balances spot con saldo distinto de cero (free/locked)."""
         return read_tools.get_balance(client)
 
     @mcp.tool()
-    def binance_get_price(symbol: str):
+    def binance_get_price(symbol: str) -> PriceTicker:
         """Precio actual de un símbolo (ej. BTCUSDT)."""
         return read_tools.get_price(client, symbol)
 
     @mcp.tool()
-    def binance_get_open_orders(symbol: str | None = None):
+    def binance_get_open_orders(symbol: str | None = None) -> list[OpenOrder]:
         """Órdenes abiertas (todas o de un símbolo)."""
         return read_tools.get_open_orders(client, symbol)
 
     @mcp.tool()
-    def binance_get_order_history(symbol: str, limit: int = 50):
+    def binance_get_order_history(symbol: str, limit: int = 50) -> list[OpenOrder]:
         """Historial de órdenes de un símbolo."""
         return read_tools.get_order_history(client, symbol, limit)
 
     @mcp.tool()
-    def binance_get_account_info():
+    def binance_get_account_info() -> AccountInfo:
         """Info de cuenta (canTrade, comisiones; permisos de key sólo en mainnet)."""
         return read_tools.get_account_info(client, is_testnet=is_testnet)
 
     # --- 4 tools de escritura two-phase (server propone; NUNCA ejecuta) ---
+    # Los Literal (Side/OrderType/Env/TimeInForce) viajan al schema de la tool y los
+    # re-valida Pydantic en runtime al construir CanonicalOrder (spec §3.3).
     @mcp.tool()
-    def binance_spot_order_propose(symbol: str, side: str, type: str, env: str,
+    def binance_spot_order_propose(symbol: str, side: Side, type: OrderType, env: Env,
                                    quantity: Decimal | None = None,
                                    quote_quantity: Decimal | None = None,
                                    price: Decimal | None = None,
-                                   time_in_force: str | None = None):
+                                   time_in_force: TimeInForce | None = None) -> OrderProposal:
         """Propone una orden spot al confirmador (no ejecuta). Devuelve intent_id."""
         return write_tools.spot_order_propose(
             ipc=ipc, market=market, symbol=symbol, side=side, type=type, env=env,
@@ -88,23 +94,23 @@ def _register_tools(client: object, ipc: IpcClient, market: MarketEstimator,
             time_in_force=time_in_force)
 
     @mcp.tool()
-    def binance_spot_order_status(intent_id: str):
+    def binance_spot_order_status(intent_id: str) -> OrderStatus:
         """Consulta el desenlace de una orden propuesta (sin efecto)."""
         return write_tools.spot_order_status(ipc=ipc, intent_id=intent_id)
 
     @mcp.tool()
-    def binance_cancel_order_propose(symbol: str, order_id: int, env: str):
+    def binance_cancel_order_propose(symbol: str, order_id: int, env: Env) -> OrderProposal:
         """Propone cancelar una orden (re-consulta estado; no cancela)."""
         return write_tools.cancel_order_propose(
             ipc=ipc, client=client, symbol=symbol, order_id=order_id, env=env)
 
     @mcp.tool()
-    def binance_cancel_order_status(intent_id: str):
+    def binance_cancel_order_status(intent_id: str) -> OrderStatus:
         """Consulta el desenlace de una cancelación propuesta (sin efecto)."""
         return write_tools.cancel_order_status(ipc=ipc, intent_id=intent_id)
 
 
-def main() -> None:
+def main() -> None:  # pragma: no cover — arranque puro (proceso real + mcp.run stdio)
     settings, client = bootstrap(os.environ)
     ipc = IpcClient(SOCKET_PATH)
     market = _make_estimator(client)
@@ -112,5 +118,5 @@ def main() -> None:
     mcp.run(transport="stdio")
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()

@@ -20,14 +20,26 @@ kainext-binance-mcp-confirmer = "kainext_binance_mcp_confirmer.__main__:main"
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build.targets.wheel]
+# Layout src/ con dos paquetes: hatchling debe saber dónde viven.
+packages = ["src/kainext_binance_mcp", "src/kainext_binance_mcp_confirmer"]
+
 [tool.pytest.ini_options]
-addopts = "--cov=kainext_binance_mcp --cov=kainext_binance_mcp_confirmer --cov-report=term-missing"
+# --cov-fail-under=90: gate duro de merge (plan §5). Los módulos críticos del gate
+# (intents/ipc/idempotency/guard/executor) están al 100%/≥95% por sus tests dedicados.
+addopts = "--cov=kainext_binance_mcp --cov=kainext_binance_mcp_confirmer --cov-report=term-missing --cov-fail-under=90"
 markers = ["integration: tests que pegan a testnet (requieren keys)"]
 asyncio_mode = "auto"
 
 [tool.mypy]
 strict = true
+mypy_path = "src"
 packages = ["kainext_binance_mcp", "kainext_binance_mcp_confirmer"]
+
+# Librerías sin stubs de tipos (binance, mcp): no romper strict por imports no tipados.
+[[tool.mypy.overrides]]
+module = ["binance.*", "mcp.*"]
+ignore_missing_imports = true
 
 [tool.ruff]
 line-length = 100

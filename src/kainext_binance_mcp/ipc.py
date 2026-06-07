@@ -16,7 +16,10 @@ import json
 import os
 import socket
 import threading
-from typing import Any
+from typing import TYPE_CHECKING, Any, cast
+
+if TYPE_CHECKING:
+    from kainext_binance_mcp.models import CanonicalOrder
 
 PROTOCOL_VERSION = 1
 _ALLOWED_TYPES = {"register", "status"}
@@ -93,9 +96,9 @@ class IpcClient:
         if isinstance(data, dict) and "error" in data and "state" not in data \
                 and "intent_id" not in data:
             raise IpcProtocolError(str(data["error"]))
-        return data
+        return cast("dict[str, Any]", data)
 
-    def register(self, order: "CanonicalOrder") -> tuple[str, int]:  # noqa: F821
+    def register(self, order: CanonicalOrder) -> tuple[str, int]:
         data = self._request({"v": PROTOCOL_VERSION, "type": "register", "kind": "order",
                               "order": order.model_dump(mode="json")})
         return data["intent_id"], int(data["expires_at"])

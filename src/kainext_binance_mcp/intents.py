@@ -75,15 +75,23 @@ class IntentStore:
             raise IntentStateError(f"intent {it.intent_id} ya es terminal ({it._state})")
 
     def mark_approved(self, iid: str) -> None:
-        it = self.get(iid); self._guard_pending(it); it.approved = True
+        it = self.get(iid)
+        self._guard_pending(it)
+        it.approved = True
 
     def mark_rejected(self, iid: str) -> None:
-        it = self.get(iid); self._guard_pending(it); it._state = "rejected"
+        it = self.get(iid)
+        self._guard_pending(it)
+        it._state = "rejected"
 
     def mark_executed(self, iid: str, result: OrderResult) -> None:
-        it = self.get(iid); self._guard_pending(it)
-        it.result = result; it._state = "executed"
+        it = self.get(iid)
+        self._guard_pending(it)
+        it.result = result
+        it._state = "executed"
 
     def mark_failed(self, iid: str, error: ToolError) -> None:
-        it = self.get(iid); self._guard_pending(it)
-        it.error = error; it._state = "failed"
+        it = self.get(iid)
+        self._guard_pending(it)
+        it.error = error
+        it._state = "failed"

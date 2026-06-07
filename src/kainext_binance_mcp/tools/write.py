@@ -3,7 +3,8 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any, Protocol
 from kainext_binance_mcp.models import (
-    CanonicalOrder, OrderProposal, OrderStatus, OrderPreview, ToolError,
+    CanonicalOrder, Env, OrderProposal, OrderPreview, OrderStatus, OrderType,
+    Side, TimeInForce, ToolError,
 )
 
 _NOT_CANCELABLE = {"FILLED", "CANCELED", "EXPIRED"}
@@ -14,10 +15,10 @@ class IpcClient(Protocol):
     def status(self, intent_id: str) -> dict[str, Any]: ...
 
 
-def spot_order_propose(*, ipc: IpcClient, market: Any, symbol: str, side: str, type: str,
-                       env: str, quantity: Decimal | None = None,
+def spot_order_propose(*, ipc: IpcClient, market: Any, symbol: str, side: Side, type: OrderType,
+                       env: Env, quantity: Decimal | None = None,
                        quote_quantity: Decimal | None = None, price: Decimal | None = None,
-                       time_in_force: str | None = None) -> OrderProposal:
+                       time_in_force: TimeInForce | None = None) -> OrderProposal:
     if type == "LIMIT" and time_in_force is None:
         time_in_force = "GTC"
     order = CanonicalOrder(symbol=symbol, side=side, type=type, quantity=quantity,
@@ -33,7 +34,7 @@ def spot_order_status(*, ipc: IpcClient, intent_id: str) -> OrderStatus:
 
 
 def cancel_order_propose(*, ipc: Any, client: Any, symbol: str, order_id: int,
-                         env: str) -> OrderProposal:
+                         env: Env) -> OrderProposal:
     """Re-consulta el estado de la orden ANTES de proponer la cancelación: si ya está
     llenada/cancelada/expirada devuelve un OrderProposal con error (sin crear intent)."""
     current = client.get_order(symbol=symbol, orderId=order_id)

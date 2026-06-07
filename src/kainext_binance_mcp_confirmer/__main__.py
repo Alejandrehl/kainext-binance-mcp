@@ -12,7 +12,7 @@ from kainext_binance_mcp.config import Settings, load_confirmer_settings
 from kainext_binance_mcp.guard import assert_trade_key_safe, perms_from_api
 from kainext_binance_mcp.intents import IntentStore
 from kainext_binance_mcp.ipc import serve
-from kainext_binance_mcp.market import MarketEstimator, parse_symbol_filters
+from kainext_binance_mcp.market import MarketEstimator, SymbolFilters, parse_symbol_filters
 
 SOCKET_PATH = os.path.expanduser(
     "~/Library/Application Support/kainext-binance-mcp/confirmer.sock")
@@ -30,7 +30,7 @@ def bootstrap(env: Mapping[str, str]) -> tuple[Settings, object]:
 
 
 def _make_estimator(client: object) -> MarketEstimator:
-    def get_filters(symbol: str):
+    def get_filters(symbol: str) -> SymbolFilters:
         return parse_symbol_filters(client.get_symbol_info(symbol))  # type: ignore[attr-defined]
 
     def get_price(symbol: str) -> Decimal:
@@ -39,7 +39,7 @@ def _make_estimator(client: object) -> MarketEstimator:
     return MarketEstimator(get_filters=get_filters, get_price=get_price)
 
 
-def main() -> None:
+def main() -> None:  # pragma: no cover — arranque puro (proceso real + serve() bloqueante)
     _settings, client = bootstrap(os.environ)
     nonce = secrets.token_hex(16)               # secreto del confirmador (no expuesto al modelo)
     store = IntentStore(ttl_seconds=300, now=lambda: int(time.time()))
@@ -48,5 +48,5 @@ def main() -> None:
     serve(SOCKET_PATH, store, client, nonce, dialog_lock, estimator)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     main()
