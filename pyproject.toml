@@ -1,0 +1,33 @@
+[project]
+name = "kainext-binance-mcp"
+version = "0.1.0"
+description = "MCP server de Binance (spot, capa 1) — KaiNext"
+requires-python = ">=3.12"
+dependencies = [
+    "mcp[cli]==1.16.0",
+    "python-binance==1.0.36",
+    "pydantic==2.11.7",
+]
+
+[project.optional-dependencies]
+dev = ["pytest==8.3.3", "pytest-cov==5.0.0", "mypy==1.13.0", "ruff==0.7.2", "pytest-asyncio==0.24.0"]
+
+[project.scripts]
+kainext-binance-mcp = "kainext_binance_mcp.server:main"
+kainext-binance-mcp-confirmer = "kainext_binance_mcp_confirmer.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+addopts = "--cov=kainext_binance_mcp --cov=kainext_binance_mcp_confirmer --cov-report=term-missing"
+markers = ["integration: tests que pegan a testnet (requieren keys)"]
+asyncio_mode = "auto"
+
+[tool.mypy]
+strict = true
+packages = ["kainext_binance_mcp", "kainext_binance_mcp_confirmer"]
+
+[tool.ruff]
+line-length = 100
