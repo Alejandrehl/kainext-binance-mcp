@@ -53,6 +53,9 @@ def decode_msg(line: str) -> dict[str, Any]:
 
 
 def _read_line(conn: socket.socket) -> str:
+    # B4 (nota): un request por conexión efímera — el cliente abre, manda UNA línea, lee UNA
+    # respuesta y cierra. No hay framing multi-mensaje sobre la misma conexión (no hace falta
+    # en capa 1); por eso leemos hasta el primer '\n' (o EOF) y no bucleamos por más mensajes.
     chunks: list[bytes] = []
     while True:
         b = conn.recv(4096)
@@ -114,7 +117,8 @@ class IpcClient:
 
 def serve(socket_path: str, store: Any, client: Any, nonce: str,
           dialog_lock: "threading.Lock", estimator: Any,
-          *, max_pending: int = _MAX_PENDING) -> None:
+          *, max_pending: int = _MAX_PENDING, confirmer_env: str = "testnet",
+          audit_path: str | None = None) -> None:
     """Servidor IPC (lo corre el confirmador). Crea el Unix socket (carpeta 0700,
     socket 0600), acepta conexiones y atiende register/status. La ejecución NUNCA
     nace de un mensaje: sólo de `handle_intent` tras el clic en el diálogo (spec §4.3)."""
@@ -137,12 +141,14 @@ def serve(socket_path: str, store: Any, client: Any, nonce: str,
     def _dispatch(order: CanonicalOrder, intent_id: str) -> None:
         with dialog_lock:  # anti-spam §4.3c: un diálogo a la vez
             handle_intent(order=order, intent_id=intent_id, store=store, client=client,
-                          estimator=estimator, confirm=ask_confirmation, nonce=nonce)
+                          estimator=estimator, confirm=ask_confirmation, nonce=nonce,
+                          confirmer_env=confirmer_env, audit_path=audit_path)
 
     def _dispatch_cancel(symbol: str, order_id: int, env: str, intent_id: str) -> None:
         with dialog_lock:
             handle_cancel_intent(symbol=symbol, order_id=order_id, env=env, intent_id=intent_id,
-                                 store=store, client=client, confirm=ask_confirmation)
+                                 store=store, client=client, confirm=ask_confirmation,
+                                 confirmer_env=confirmer_env)
 
     def _handle(msg: dict[str, Any]) -> dict[str, Any]:
         mtype = msg["type"]

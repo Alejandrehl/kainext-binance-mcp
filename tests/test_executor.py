@@ -1,5 +1,8 @@
+import json
 from decimal import Decimal
 from unittest.mock import MagicMock
+from binance.client import Client
+from binance.exceptions import BinanceAPIException
 from kainext_binance_mcp.models import CanonicalOrder
 from kainext_binance_mcp_confirmer.executor import handle_intent, handle_cancel_intent
 
@@ -162,6 +165,65 @@ def test_cancel_get_order_failure_is_sanitized():
     client.cancel_order.assert_not_called()
     store.mark_failed.assert_called_once()
     assert store.mark_failed.call_args.args[1].code == -1001
+
+
+class _Resp:
+    """Stub mínimo de requests.Response para construir un BinanceAPIException REAL."""
+    def __init__(self, text):
+        self.text = text
+        self.request = None
+
+
+def test_execute_failure_scrubs_api_key_from_tool_error():
+    """C2: create_order revienta con un BinanceAPIException (tipo REAL) cuyo mensaje
+    contiene la API key del client. El ToolError de mark_failed debe salir REDACTED.
+    Usa un Client REAL de python-binance (API_KEY/API_SECRET de verdad)."""
+    api_key = "LEAKED_API_KEY_abc123XYZ"
+    client = Client(api_key, "LEAKED_API_SECRET_def456", ping=False)
+    store = MagicMock(); est = MagicMock()
+    est.estimate.return_value = MagicMock(feasible=True, effective_qty=Decimal("0.0002"),
+                                          price=None)
+    leaked = json.dumps({"code": -1022,
+                         "msg": f"signature for key {api_key} invalid"})
+    boom = BinanceAPIException(_Resp(leaked), 400, leaked)  # tipo real; .code=-1022, .message con la key
+    client.create_order = MagicMock(side_effect=boom)
+    handle_intent(order=_order(), intent_id="i1", store=store, client=client,
+                  estimator=est, confirm=lambda text: True, nonce="n")
+    store.mark_executed.assert_not_called()
+    store.mark_failed.assert_called_once()
+    err = store.mark_failed.call_args.args[1]
+    assert api_key not in err.message, "la API key NO debe filtrarse al modelo"
+    assert "REDACTED" in err.message
+    assert err.code == -1022
+
+
+def test_env_mismatch_marks_failed_without_dialog_or_execute():
+    """C3: intent env='testnet' contra confirmador env='mainnet' → mark_failed; NO se estima,
+    NO se muestra diálogo, NO se ejecuta. Usa un CanonicalOrder REAL (env del wire)."""
+    client = MagicMock(); store = MagicMock(); est = MagicMock()
+    confirm = MagicMock()
+    order = CanonicalOrder(symbol="BTCUSDT", side="BUY", type="MARKET",
+                           quote_quantity=Decimal("10"), env="testnet")  # tipo real
+    handle_intent(order=order, intent_id="i1", store=store, client=client,
+                  estimator=est, confirm=confirm, nonce="n", confirmer_env="mainnet")
+    est.estimate.assert_not_called()
+    confirm.assert_not_called()
+    client.create_order.assert_not_called()
+    store.mark_executed.assert_not_called()
+    store.mark_failed.assert_called_once()
+    assert store.mark_failed.call_args.args[1].code == "env_mismatch"
+
+
+def test_cancel_env_mismatch_marks_failed_without_query_or_cancel():
+    """C3 (cancel): env del intent ≠ env del confirmador → mark_failed; ni get_order ni cancel."""
+    client = MagicMock(); store = MagicMock()
+    handle_cancel_intent(symbol="BTCUSDT", order_id=1, env="mainnet", intent_id="c1",
+                         store=store, client=client, confirm=lambda text: True,
+                         confirmer_env="testnet")
+    client.get_order.assert_not_called()
+    client.cancel_order.assert_not_called()
+    store.mark_failed.assert_called_once()
+    assert store.mark_failed.call_args.args[1].code == "env_mismatch"
 
 
 def test_cancel_failure_after_confirm_is_sanitized():

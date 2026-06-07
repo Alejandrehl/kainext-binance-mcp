@@ -16,6 +16,8 @@ from kainext_binance_mcp.market import MarketEstimator, SymbolFilters, parse_sym
 
 SOCKET_PATH = os.path.expanduser(
     "~/Library/Application Support/kainext-binance-mcp/confirmer.sock")
+AUDIT_PATH = os.path.expanduser(
+    "~/Library/Application Support/kainext-binance-mcp/audit.log")
 
 
 def bootstrap(env: Mapping[str, str]) -> tuple[Settings, object]:
@@ -40,12 +42,15 @@ def _make_estimator(client: object) -> MarketEstimator:
 
 
 def main() -> None:  # pragma: no cover — arranque puro (proceso real + serve() bloqueante)
-    _settings, client = bootstrap(os.environ)
+    settings, client = bootstrap(os.environ)
     nonce = secrets.token_hex(16)               # secreto del confirmador (no expuesto al modelo)
     store = IntentStore(ttl_seconds=300, now=lambda: int(time.time()))
     dialog_lock = threading.Lock()              # anti-spam: un diálogo a la vez (§4.3c)
     estimator = _make_estimator(client)         # la trade key puede leer (filtros/precio)
-    serve(SOCKET_PATH, store, client, nonce, dialog_lock, estimator)
+    # C3: el confirmador conoce SU propio env; valida que el intent coincida antes de ejecutar.
+    # A1: ruta del audit log de órdenes ejecutadas.
+    serve(SOCKET_PATH, store, client, nonce, dialog_lock, estimator,
+          confirmer_env=settings.env, audit_path=AUDIT_PATH)
 
 
 if __name__ == "__main__":  # pragma: no cover
