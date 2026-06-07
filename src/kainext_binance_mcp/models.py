@@ -146,3 +146,51 @@ class AccountInfo(BaseModel):
     commission_rates: dict[str, Decimal]
     account_type: str
     key_permissions: "KeyPermissions | None" = None
+
+
+# --- Capa 2: market data + indicadores (read-only). OHLCV en Decimal (E3); indicadores en float. ---
+
+class Kline(BaseModel):
+    """Vela OHLCV. OHLCV en Decimal por consistencia con capa 1 (E3)."""
+    open_time: int
+    open: Decimal
+    high: Decimal
+    low: Decimal
+    close: Decimal
+    volume: Decimal
+    close_time: int
+
+
+class Ticker24h(BaseModel):
+    """Stats rolling 24h de un par."""
+    symbol: str
+    price_change_pct: Decimal
+    high: Decimal
+    low: Decimal
+    volume: Decimal
+    last: Decimal
+
+
+class IndicatorResult(BaseModel):
+    """Series de indicadores calculados sobre las klines. Valores en float (analíticos, E3).
+
+    ``indicators`` mapea nombre -> serie alineada con las velas; ``None`` en el periodo de
+    calentamiento de cada indicador. ``as_of`` = close_time de la última vela usada.
+    """
+    symbol: str
+    interval: str
+    indicators: dict[str, list[float | None]]
+    as_of: int
+
+
+class BacktestResult(BaseModel):
+    """Resultado de un backtest liviano (E5). Métricas en float; honesto y sin promesas."""
+    symbol: str
+    interval: str
+    strategy: str
+    total_return_pct: float
+    buy_hold_return_pct: float
+    n_trades: int
+    win_rate: float
+    max_drawdown_pct: float
+    disclaimer: str
