@@ -186,22 +186,26 @@ def test_register_cancel_client_method_unavailable_when_no_socket(tmp_path):
 
 
 def test_serve_breaks_loop_and_cleans_up_on_socket_close(monkeypatch):
-    """Al cerrar el socket de escucha, accept() lanza OSError → el loop corta y el finally
-    cierra y unlinkea el socket. Cubre el shutdown limpio del confirmador."""
+    """Cuando accept() lanza OSError (socket de escucha cerrado) el loop corta y el finally
+    cierra+unlinkea el socket. Determinista y portable: forzamos el OSError en accept() en
+    vez de cerrar el socket desde otro hilo (en Linux, cerrar un fd NO interrumpe de forma
+    fiable un accept() bloqueado en otro hilo → sería flaky en CI)."""
     import kainext_binance_mcp.ipc as ipc_mod
 
     tmpdir = tempfile.mkdtemp(prefix="kbm-shut-", dir="/tmp")
     sock_path = os.path.join(tmpdir, "confirmer.sock")
 
-    created: list[socket.socket] = []
-    real_socket = socket.socket
+    real_socket_cls = socket.socket
+    armed = {"used": False}
 
-    def _tracking_socket(*a, **k):
-        s = real_socket(*a, **k)
-        created.append(s)
-        return s
+    class _AcceptRaisesOnce(real_socket_cls):  # type: ignore[misc, valid-type]
+        def accept(self):  # type: ignore[override]
+            if not armed["used"]:
+                armed["used"] = True
+                raise OSError("listening socket closed")
+            return super().accept()
 
-    monkeypatch.setattr(ipc_mod.socket, "socket", _tracking_socket)
+    monkeypatch.setattr(ipc_mod.socket, "socket", _AcceptRaisesOnce)
     import kainext_binance_mcp_confirmer.dialog as dialog
     monkeypatch.setattr(dialog, "ask_confirmation", lambda text: False)
 
@@ -213,15 +217,8 @@ def test_serve_breaks_loop_and_cleans_up_on_socket_close(monkeypatch):
         target=serve, args=(sock_path, store, MagicMock(), "n", threading.Lock(), estimator),
         daemon=True)
     t.start()
-    for _ in range(200):
-        if os.path.exists(sock_path):
-            break
-        time.sleep(0.01)
-    # El primer socket creado por serve es el de escucha (srv): cerrarlo rompe accept().
-    srv_sock = created[0]
-    srv_sock.close()
-    t.join(timeout=2.0)
-    assert not t.is_alive(), "serve no terminó tras cerrar el socket de escucha"
+    t.join(timeout=5.0)
+    assert not t.is_alive(), "serve no terminó tras OSError en accept()"
     assert not os.path.exists(sock_path), "el finally debió unlinkear el socket"
 
 
