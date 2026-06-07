@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 
 from kainext_binance_mcp.models import CanonicalOrder
 from kainext_binance_mcp_confirmer.audit import append_audit_entry
-from kainext_binance_mcp_confirmer.executor import handle_intent
+from kainext_binance_mcp_confirmer.executor import handle_cancel_intent, handle_intent
 
 
 def test_append_audit_entry_writes_expected_line_without_secrets(tmp_path):
@@ -99,6 +99,63 @@ def test_audit_failure_never_breaks_execution(monkeypatch, tmp_path):
                   estimator=est, confirm=lambda text: True, nonce="n",
                   audit_path=str(tmp_path / "audit.log"))
     store.mark_executed.assert_called_once()  # ejecución intacta pese al fallo del audit
+    store.mark_failed.assert_not_called()
+
+
+def test_cancel_executor_writes_audit_line_after_mark_executed(tmp_path):
+    """A1: una cancelación ejecutada deja su línea de audit (action=CANCEL), sin secretos."""
+    path = str(tmp_path / "audit.log")
+    client = MagicMock(); store = MagicMock()
+    client.get_order.return_value = {"status": "NEW"}  # cancelable (TOCTOU recheck)
+    client.cancel_order.return_value = {"orderId": 77, "status": "CANCELED"}
+    # python-binance guarda la key/secret en estos atributos: deben NO filtrarse al audit.
+    client.API_KEY = "super-secret-key"
+    client.API_SECRET = "super-secret-secret"
+    handle_cancel_intent(symbol="BTCUSDT", order_id=77, env="testnet", intent_id="c1",
+                         store=store, client=client, confirm=lambda text: True,
+                         audit_path=path)
+    store.mark_executed.assert_called_once()
+    with open(path) as f:
+        line = f.read().strip()
+    entry = json.loads(line)
+    assert entry["action"] == "CANCEL"
+    assert entry["intent_id"] == "c1"
+    assert entry["order_id"] == 77
+    assert entry["symbol"] == "BTCUSDT"
+    assert entry["env"] == "testnet"
+    assert "timestamp" in entry
+    # Sin secretos: ni key/secret del client ni la palabra "secret"/"api_key"/"nonce".
+    assert "super-secret-key" not in line and "super-secret-secret" not in line
+    raw = line.lower()
+    assert "secret" not in raw and "api_key" not in raw and "nonce" not in raw
+
+
+def test_cancel_executor_does_not_write_audit_when_no_path(tmp_path):
+    """Sin audit_path (default None) una cancelación no escribe nada."""
+    client = MagicMock(); store = MagicMock()
+    client.get_order.return_value = {"status": "NEW"}
+    client.cancel_order.return_value = {"orderId": 77, "status": "CANCELED"}
+    handle_cancel_intent(symbol="BTCUSDT", order_id=77, env="testnet", intent_id="c1",
+                         store=store, client=client, confirm=lambda text: True)
+    store.mark_executed.assert_called_once()
+    assert not list(tmp_path.iterdir())
+
+
+def test_cancel_audit_failure_never_breaks_cancellation(monkeypatch, tmp_path):
+    """A1 (best-effort): si el audit revienta, la cancelación YA quedó executed; no propaga."""
+    import kainext_binance_mcp_confirmer.audit as audit_mod
+
+    def boom(**kw):
+        raise OSError("disco lleno")
+
+    monkeypatch.setattr(audit_mod, "append_audit_entry", boom)
+    client = MagicMock(); store = MagicMock()
+    client.get_order.return_value = {"status": "NEW"}
+    client.cancel_order.return_value = {"orderId": 77, "status": "CANCELED"}
+    handle_cancel_intent(symbol="BTCUSDT", order_id=77, env="testnet", intent_id="c1",
+                         store=store, client=client, confirm=lambda text: True,
+                         audit_path=str(tmp_path / "audit.log"))
+    store.mark_executed.assert_called_once()
     store.mark_failed.assert_not_called()
 
 

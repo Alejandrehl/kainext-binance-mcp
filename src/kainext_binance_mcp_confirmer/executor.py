@@ -65,7 +65,8 @@ def handle_intent(*, order: CanonicalOrder, intent_id: str, store: IntentStore,
 def handle_cancel_intent(*, symbol: str, order_id: int, env: str, intent_id: str,
                          store: IntentStore, client: Client,
                          confirm: Callable[[str], bool],
-                         confirmer_env: str = "testnet") -> None:
+                         confirmer_env: str = "testnet",
+                         audit_path: str | None = None) -> None:
     """Cancelación autoritativa. Re-consulta estado JUSTO antes de cancelar (TOCTOU,
     spec §4.3/§3.2) y NUNCA cancela sin el clic. Invariante: sin confirm → no cancela."""
     from kainext_binance_mcp_confirmer.dialog import render_cancel_dialog_text
@@ -93,7 +94,10 @@ def handle_cancel_intent(*, symbol: str, order_id: int, env: str, intent_id: str
     store.mark_approved(intent_id)
     try:
         raw = client.cancel_order(symbol=symbol, orderId=order_id)
-        store.mark_executed(intent_id, _to_cancel_result(raw, env))
+        result = _to_cancel_result(raw, env)
+        store.mark_executed(intent_id, result)
+        if audit_path is not None:  # A1: registro de auditoría tras cancelar (sin secretos)
+            _audit_cancel(audit_path, intent_id, symbol, result)
     except Exception as e:  # noqa: BLE001
         _fail(store, intent_id, client, e)
 
@@ -154,11 +158,25 @@ def _audit_order(audit_path: str, intent_id: str, order: CanonicalOrder,
     from kainext_binance_mcp_confirmer.audit import append_audit_entry
     try:
         append_audit_entry(
-            path=audit_path, intent_id=intent_id,
+            path=audit_path, intent_id=intent_id, action="ORDER",
             client_order_id=result.client_order_id, order_id=result.order_id,
             symbol=order.symbol, side=order.side,
             effective_qty=result.executed_qty, price=order.price, env=result.env)
     except Exception:  # noqa: BLE001 — el audit nunca debe romper el flujo de ejecución
+        pass
+
+
+def _audit_cancel(audit_path: str, intent_id: str, symbol: str,
+                  result: CancelResult) -> None:
+    """A1: appendea la cancelación ejecutada al audit log (best-effort; nunca tumba el flujo
+    ni filtra secretos). Una cancelación no tiene side/qty/price → van None; action='CANCEL'."""
+    from kainext_binance_mcp_confirmer.audit import append_audit_entry
+    try:
+        append_audit_entry(
+            path=audit_path, intent_id=intent_id, action="CANCEL",
+            client_order_id="", order_id=result.order_id,
+            symbol=symbol, side="", effective_qty=None, price=None, env=result.env)
+    except Exception:  # noqa: BLE001 — el audit nunca debe romper el flujo de cancelación
         pass
 
 

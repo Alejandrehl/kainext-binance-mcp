@@ -148,7 +148,7 @@ def serve(socket_path: str, store: Any, client: Any, nonce: str,
         with dialog_lock:
             handle_cancel_intent(symbol=symbol, order_id=order_id, env=env, intent_id=intent_id,
                                  store=store, client=client, confirm=ask_confirmation,
-                                 confirmer_env=confirmer_env)
+                                 confirmer_env=confirmer_env, audit_path=audit_path)
 
     def _handle(msg: dict[str, Any]) -> dict[str, Any]:
         mtype = msg["type"]

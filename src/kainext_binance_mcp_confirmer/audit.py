@@ -33,15 +33,18 @@ def append_audit_entry(
     effective_qty: Decimal | str | None,
     price: Decimal | str | None,
     env: str,
+    action: str = "ORDER",
 ) -> None:
     """Appendea una línea JSON al audit log. Crea la carpeta (0700) y el archivo (0600)
-    si no existen. SIN secretos. El timestamp es UTC ISO-8601 (instante de la escritura)."""
+    si no existen. SIN secretos. El timestamp es UTC ISO-8601 (instante de la escritura).
+    `action` distingue una colocación ('ORDER') de una cancelación ('CANCEL')."""
     directory = os.path.dirname(path)
     if directory:
         os.makedirs(directory, mode=0o700, exist_ok=True)
     entry = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "intent_id": intent_id,
+        "action": action,
         "client_order_id": client_order_id,
         "order_id": order_id,
         "symbol": symbol,
