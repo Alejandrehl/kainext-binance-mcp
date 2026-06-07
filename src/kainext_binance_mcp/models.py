@@ -102,3 +102,35 @@ class OrderStatus(BaseModel):
     state: Literal["pending", "executed", "rejected", "expired", "failed", "unknown"]
     result: OrderResult | None = None
     error: ToolError | None = None
+
+
+class AssetBalance(BaseModel):
+    asset: str
+    free: Decimal
+    locked: Decimal
+
+
+class OpenOrder(BaseModel):
+    symbol: str
+    order_id: int
+    client_order_id: str
+    side: str
+    type: str
+    price: Decimal
+    orig_qty: Decimal
+    executed_qty: Decimal
+    status: str
+    time_in_force: str
+    time: int
+
+
+class PriceTicker(BaseModel):
+    symbol: str
+    price: Decimal
+
+
+class AccountInfo(BaseModel):
+    can_trade: bool
+    commission_rates: dict[str, Decimal]
+    account_type: str
+    key_permissions: "KeyPermissions | None" = None
