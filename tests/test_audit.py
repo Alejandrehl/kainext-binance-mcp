@@ -58,15 +58,19 @@ def test_append_is_additive(tmp_path):
 
 
 def test_executor_writes_audit_line_after_mark_executed(tmp_path):
-    """El executor appendea al audit log tras mark_executed, con la cantidad efectiva real."""
+    """El executor appendea al audit log tras mark_executed. `effective_qty` = cantidad ORDENADA
+    (lo colocado), `executed_qty` = lo llenado. Para una LIMIT resting executed_qty=0 pero la
+    orden igual debe quedar trazada con su cantidad ordenada (no 0)."""
     path = str(tmp_path / "audit.log")
     client = MagicMock(); store = MagicMock(); est = MagicMock()
     est.estimate.return_value = MagicMock(feasible=True, effective_qty=Decimal("0.0002"),
-                                          price=None)
+                                          price=Decimal("49500"))
+    # Orden LIMIT que quedó NEW (resting): executedQty=0, distinto de la cantidad ordenada.
     client.create_order.return_value = {"orderId": 9, "clientOrderId": "kbm_x",
-        "status": "FILLED", "executedQty": "0.0002", "cummulativeQuoteQty": "10", "fills": []}
-    order = CanonicalOrder(symbol="BTCUSDT", side="BUY", type="MARKET",
-                           quote_quantity=Decimal("10"), env="testnet")
+        "status": "NEW", "executedQty": "0", "cummulativeQuoteQty": "0", "fills": []}
+    order = CanonicalOrder(symbol="BTCUSDT", side="BUY", type="LIMIT",
+                           quantity=Decimal("0.0002"), price=Decimal("49500"),
+                           time_in_force="GTC", env="testnet")
     handle_intent(order=order, intent_id="i1", store=store, client=client,
                   estimator=est, confirm=lambda text: True, nonce="super-secret-nonce",
                   audit_path=path)
@@ -75,7 +79,10 @@ def test_executor_writes_audit_line_after_mark_executed(tmp_path):
         line = f.read().strip()
     entry = json.loads(line)
     assert entry["order_id"] == 9 and entry["client_order_id"] == "kbm_x"
-    assert entry["effective_qty"] == "0.0002" and entry["env"] == "testnet"
+    # Bug fix: registra la cantidad ORDENADA (0.0002), NO la ejecutada (0) que tenía antes.
+    assert entry["effective_qty"] == "0.0002"
+    assert entry["executed_qty"] == "0"
+    assert entry["env"] == "testnet"
     assert "super-secret-nonce" not in line  # el nonce NUNCA va al audit
 
 

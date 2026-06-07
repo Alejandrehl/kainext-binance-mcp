@@ -57,7 +57,7 @@ def handle_intent(*, order: CanonicalOrder, intent_id: str, store: IntentStore,
         result = _to_result(raw, order.env)
         store.mark_executed(intent_id, result)
         if audit_path is not None:  # A1: registro de auditoría tras ejecutar (sin secretos)
-            _audit_order(audit_path, intent_id, order, result)
+            _audit_order(audit_path, intent_id, order, result, preview)
     except Exception as e:  # noqa: BLE001 — sanitizado en _fail (scrub de secretos)
         _fail(store, intent_id, client, e)
 
@@ -152,16 +152,18 @@ def _to_result(raw: dict[str, Any], env: str) -> OrderResult:
 
 
 def _audit_order(audit_path: str, intent_id: str, order: CanonicalOrder,
-                 result: OrderResult) -> None:
+                 result: OrderResult, preview: Any) -> None:
     """A1: appendea la orden ejecutada al audit log (best-effort; nunca tumba la ejecución
-    ni filtra secretos). `effective_qty` = lo realmente ejecutado; `price` = el de la orden."""
+    ni filtra secretos). `effective_qty` = cantidad ORDENADA (lo que se colocó, redondeado);
+    `executed_qty` = lo llenado hasta ahora (0 si la LIMIT quedó resting); `price` = el de la orden."""
     from kainext_binance_mcp_confirmer.audit import append_audit_entry
     try:
         append_audit_entry(
             path=audit_path, intent_id=intent_id, action="ORDER",
             client_order_id=result.client_order_id, order_id=result.order_id,
             symbol=order.symbol, side=order.side,
-            effective_qty=result.executed_qty, price=order.price, env=result.env)
+            effective_qty=preview.effective_qty, executed_qty=result.executed_qty,
+            price=order.price, env=result.env)
     except Exception:  # noqa: BLE001 — el audit nunca debe romper el flujo de ejecución
         pass
 

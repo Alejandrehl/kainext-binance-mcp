@@ -34,6 +34,7 @@ def append_audit_entry(
     price: Decimal | str | None,
     env: str,
     action: str = "ORDER",
+    executed_qty: Decimal | str | None = None,
 ) -> None:
     """Appendea una línea JSON al audit log. Crea la carpeta (0700) y el archivo (0600)
     si no existen. SIN secretos. El timestamp es UTC ISO-8601 (instante de la escritura).
@@ -50,6 +51,7 @@ def append_audit_entry(
         "symbol": symbol,
         "side": side,
         "effective_qty": effective_qty,
+        "executed_qty": executed_qty,
         "price": price,
         "env": env,
     }
