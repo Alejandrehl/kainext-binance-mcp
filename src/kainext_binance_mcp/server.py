@@ -55,7 +55,7 @@ def _make_estimator(client: object) -> MarketEstimator:
 
 def _register_tools(client: object, ipc: IpcClient, market: MarketEstimator,
                     *, is_testnet: bool) -> None:
-    """Registra las 17 tools. Cada @mcp.tool() delega en las funciones ya testeadas
+    """Registra las 19 tools. Cada @mcp.tool() delega en las funciones ya testeadas
     de tools/read.py, tools/write.py, tools/marketdata.py, tools/news.py y tools/signals.py.
     Las read, las de market data (capa 2) y las de señales (capa 4) reciben `client`; las de
     noticias (capa 3) no reciben client (RSS público); las write reciben `ipc`/`market`/`client`
@@ -123,7 +123,7 @@ def _register_tools(client: object, ipc: IpcClient, market: MarketEstimator,
         """Sentiment CRUDO agregado de un activo sobre una ventana (léxico, no es predicción)."""
         return news_tools.get_sentiment(asset, window_hours=window_hours)
 
-    # --- 2 tools de capa 4: motor de señales (read key, 100% read-only / PROPONE) ---
+    # --- 3 tools de capa 4: motor de señales + backtest (read key, 100% read-only) ---
     # Combinan indicadores (capa 2) + sentiment (capa 3) + ATR en una señal transparente.
     # PROPONEN; NUNCA colocan órdenes (eso es capa 1 con gate humano).
     @mcp.tool()
@@ -137,6 +137,14 @@ def _register_tools(client: object, ipc: IpcClient, market: MarketEstimator,
     def binance_scan_signals(symbols: list[str], interval: str = "1h") -> list[Signal]:
         """Genera señales para una watchlist y las rankea por score (dónde mirar, no auto-operar)."""
         return signals_tools.scan_signals(client, symbols, interval)
+
+    @mcp.tool()
+    def binance_backtest_signal(symbol: str, interval: str = "1h", limit: int = 500,
+                                threshold: float | None = None) -> BacktestResult:
+        """Backtestea la señal TÉCNICA compuesta de capa 4 sobre históricos (read-only, sin
+        lookahead, sentiment=0). Compara total_return_pct vs buy_hold_return_pct: ¿hay edge?"""
+        return signals_tools.binance_backtest_signal(
+            client, symbol, interval, limit, threshold=threshold)
 
     # --- 4 tools de escritura two-phase (server propone; NUNCA ejecuta) ---
     # Los Literal (Side/OrderType/Env/TimeInForce) viajan al schema de la tool y los

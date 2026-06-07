@@ -157,6 +157,42 @@ def test_scan_signals_empty_list() -> None:
 
 
 # --------------------------------------------------------------------------- #
+# binance_backtest_signal (capa 4 backtest — read-only)
+# --------------------------------------------------------------------------- #
+
+def test_binance_backtest_signal_wires_klines_to_backtest() -> None:
+    from kainext_binance_mcp.models import BacktestResult
+
+    client = MagicMock()
+    client.get_klines.return_value = _binance_klines(140, slope=1.0)  # alcista
+    res = sig_tools.binance_backtest_signal(client, "BTCUSDT", "1h", limit=140)
+    assert isinstance(res, BacktestResult)
+    assert res.symbol == "BTCUSDT"
+    assert res.interval == "1h"
+    # Etiqueta honesta (no es una estrategia de capa 2) y exclusión de sentiment explícita.
+    assert res.strategy != "ema_cross"
+    assert "sentiment" in res.disclaimer.lower()
+    client.get_klines.assert_called_once()
+
+
+def test_binance_backtest_signal_invalid_interval_raises() -> None:
+    client = MagicMock()
+    with pytest.raises(ValueError, match="interval"):
+        sig_tools.binance_backtest_signal(client, "BTCUSDT", "13h")
+    client.get_klines.assert_not_called()
+
+
+def test_binance_backtest_signal_forwards_knobs() -> None:
+    client = MagicMock()
+    client.get_klines.return_value = _binance_klines(140, slope=1.0)
+    # threshold altísimo → la señal nunca entra long → 0 trades.
+    res = sig_tools.binance_backtest_signal(
+        client, "BTCUSDT", "1h", limit=140, threshold=0.99
+    )
+    assert res.n_trades == 0
+
+
+# --------------------------------------------------------------------------- #
 # Helpers: fallbacks honestos (sin red)
 # --------------------------------------------------------------------------- #
 

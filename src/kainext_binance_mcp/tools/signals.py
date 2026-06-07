@@ -20,9 +20,11 @@ from typing import TYPE_CHECKING, Callable
 import pandas as pd
 
 from kainext_binance_mcp import indicators as ind
+from kainext_binance_mcp.backtest import COMMISSION_TAKER
 from kainext_binance_mcp.klines import VALID_INTERVALS, fetch_klines
-from kainext_binance_mcp.models import SentimentResult, Signal
+from kainext_binance_mcp.models import BacktestResult, SentimentResult, Signal
 from kainext_binance_mcp.signals import engine
+from kainext_binance_mcp.signals.backtest_signal import backtest_signal
 from kainext_binance_mcp.tools import news as news_tools
 
 if TYPE_CHECKING:
@@ -152,6 +154,39 @@ def generate_signal_tool(
         atr_mult=atr_mult,
         rr=rr,
         as_of=as_of,
+    )
+
+
+def binance_backtest_signal(
+    client: "Client",
+    symbol: str,
+    interval: str = "1h",
+    limit: int = 500,
+    *,
+    weights: dict[str, float] | None = None,
+    threshold: float | None = None,
+    commission: float = COMMISSION_TAKER,
+) -> BacktestResult:
+    """Backtest de la señal técnica compuesta de capa 4 sobre históricos (100% read-only).
+
+    Trae las klines (capa 2) y delega en ``signals.backtest_signal``: corre el engine de
+    capa 4 por vela con ``sentiment=0`` (no hay sentiment histórico por vela) y reúsa el
+    harness anti-lookahead de capa 2. Devuelve un ``BacktestResult`` cuyo ``disclaimer`` deja
+    EXPLÍCITO que sólo mide la parte técnica. Comparar ``total_return_pct`` vs
+    ``buy_hold_return_pct`` es el test honesto de "¿la señal tiene edge?".
+    """
+    if interval not in VALID_INTERVALS:
+        raise ValueError(
+            f"interval inválido: {interval!r}. Válidos: {sorted(VALID_INTERVALS)}"
+        )
+    df = fetch_klines(client, symbol, interval, limit)
+    return backtest_signal(
+        df,
+        weights=weights,
+        threshold=threshold,
+        commission=commission,
+        symbol=symbol,
+        interval=interval,
     )
 
 
