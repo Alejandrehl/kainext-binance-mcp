@@ -92,6 +92,15 @@ class OrderResult(BaseModel):
     env: Env
 
 
+class CancelResult(BaseModel):
+    """Resultado de una cancelación (spec §3.3). Distinto de OrderResult: una cancelación
+    no tiene fills ni qty ejecutada propia, sólo el desenlace."""
+    order_id: int
+    status: Literal["CANCELED", "NOT_CANCELABLE"]
+    detail: str = ""
+    env: Env
+
+
 class ToolError(BaseModel):
     error: Literal[True] = True
     code: int | str
@@ -101,7 +110,9 @@ class ToolError(BaseModel):
 class OrderStatus(BaseModel):
     intent_id: str
     state: Literal["pending", "executed", "rejected", "expired", "failed", "unknown"]
-    result: OrderResult | None = None
+    # result es OrderResult (órdenes) o CancelResult (cancelaciones); None mientras no haya
+    # desenlace. Union "smart" de Pydantic v2 elige por forma del payload.
+    result: OrderResult | CancelResult | None = None
     error: ToolError | None = None
 
 
