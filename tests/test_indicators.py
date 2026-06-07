@@ -17,6 +17,7 @@ from __future__ import annotations
 import math
 
 import pandas as pd
+import pytest
 
 from kainext_binance_mcp.indicators import atr, bollinger, ema, macd, rsi
 
@@ -94,3 +95,15 @@ def test_atr_constant_range_equals_h() -> None:
     close = pd.Series([10.0] * n)
     out = atr(high, low, close, 14)
     assert math.isclose(float(out.iloc[-1]), 2.0, rel_tol=1e-12)  # H = 2
+
+
+def test_invalid_n_raises() -> None:
+    s = pd.Series([1.0, 2.0, 3.0])
+    with pytest.raises(ValueError, match="n debe ser > 0"):
+        ema(s, 0)
+    with pytest.raises(ValueError, match="n debe ser > 0"):
+        rsi(s, 0)
+    with pytest.raises(ValueError, match="n debe ser > 0"):
+        bollinger(s, 0)
+    with pytest.raises(ValueError, match="n debe ser > 0"):
+        atr(s, s, s, 0)
