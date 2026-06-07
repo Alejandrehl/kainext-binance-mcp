@@ -175,3 +175,33 @@ def test_capa3_news_tools_delegate_without_client(monkeypatch):
     assert sent.asset == "BTC"
     assert sent.n_items == 1
     assert sent.disclaimer.strip()
+
+
+def test_capa4_signal_tools_delegate_to_client(monkeypatch):
+    """Las 2 tools de capa 4 quedan registradas, delegan en el client read (capa 2) y el
+    sentiment (capa 3, mockeado para no tocar red), y NUNCA ejecutan."""
+    from kainext_binance_mcp.models import SentimentResult, Signal
+    from kainext_binance_mcp.tools import signals as signals_tools
+
+    def _fake_sentiment(asset, **_):
+        return SentimentResult(asset=asset, window_hours=24, score=0.4,
+                               n_items=2, sample=[], disclaimer="crudo")
+
+    monkeypatch.setattr(signals_tools.news_tools, "get_sentiment", _fake_sentiment)
+
+    client = MagicMock()
+    client.get_klines.return_value = _binance_klines(60)  # tendencia alcista
+    tm = _register(client, MagicMock(), MagicMock(), is_testnet=True)
+
+    sig = _fn(tm, "binance_generate_signal")("BTCUSDT", "1h")
+    assert isinstance(sig, Signal) and sig.symbol == "BTCUSDT"
+    assert -1.0 <= sig.score <= 1.0 and len(sig.factors) == 5
+
+    ranked = _fn(tm, "binance_scan_signals")(["BTCUSDT", "ETHUSDT"], "1h")
+    assert all(isinstance(s, Signal) for s in ranked) and len(ranked) == 2
+    # Rankeadas por score descendente.
+    assert [s.score for s in ranked] == sorted((s.score for s in ranked), reverse=True)
+
+    # Read-only / PROPONE: jamás coloca ni cancela órdenes.
+    client.create_order.assert_not_called()
+    client.cancel_order.assert_not_called()

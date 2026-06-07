@@ -227,3 +227,44 @@ class SentimentResult(BaseModel):
     n_items: int
     sample: list[NewsItem] = []
     disclaimer: str
+
+
+# --- Capa 4: motor de señales (read-only, PROPONE). Score y factores en float (analíticos);
+# precio y niveles de riesgo en Decimal (E3, consistencia con capa 1). ---
+
+SignalDirection = Literal["long", "hold", "avoid"]
+
+
+class SignalFactor(BaseModel):
+    """Un factor de la señal compuesta y su aporte transparente al score (spec §4/§5).
+
+    ``value`` es el valor normalizado del factor en [-1, +1] (lo que el factor "opina");
+    ``weight`` su peso en la mezcla; ``contribution`` = value·weight (lo que efectivamente
+    empujó al score). ``note`` explica en lenguaje claro qué se midió. Sin caja negra (S3).
+    """
+    name: str
+    value: float
+    weight: float
+    contribution: float
+    note: str
+
+
+class Signal(BaseModel):
+    """Señal compuesta transparente para un par (spec §4/§5). PROPONE; nunca ejecuta (S1).
+
+    ``score`` ∈ [-1, +1] = suma acotada de las ``contribution`` de cada ``factors``.
+    ``direction`` por umbral (S5). ``price`` es el precio actual (entry sugerido) y
+    ``suggested_stop``/``suggested_target`` derivan de ATR (S4): poblados para long/avoid,
+    ``None`` para hold (zona neutra). ``disclaimer`` obligatorio (S6): no es predicción.
+    """
+    symbol: str
+    interval: str
+    direction: SignalDirection
+    score: float
+    factors: list[SignalFactor]
+    price: Decimal
+    suggested_stop: Decimal | None = None
+    suggested_target: Decimal | None = None
+    atr: float
+    disclaimer: str
+    as_of: int
