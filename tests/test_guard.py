@@ -33,6 +33,25 @@ def test_read_key_clean_passes():
     perms = {**SAFE_TRADE, "enable_spot_and_margin_trading": False, "ip_restrict": False}
     assert_read_key_safe(KeyPermissions(**perms))  # read key no exige ip_restrict
 
+READ_BASE = {**SAFE_TRADE, "enable_spot_and_margin_trading": False, "ip_restrict": False}
+
+@pytest.mark.parametrize("flag", ["enable_withdrawals", "enable_futures",
+                                  "enable_margin", "permits_universal_transfer"])
+def test_read_key_overpermissioned_aborts(flag):
+    with pytest.raises(GuardError):
+        assert_read_key_safe(KeyPermissions(**{**READ_BASE, flag: True}))
+
+def test_perms_from_api_maps_insecure_flags():
+    api = {"enableSpotAndMarginTrading": True, "enableWithdrawals": True,
+           "permitsUniversalTransfer": True, "enableInternalTransfer": True,
+           "enableMargin": True, "enableFutures": True,
+           "enablePortfolioMarginTrading": True, "ipRestrict": False}
+    p = perms_from_api(api)
+    assert p.enable_withdrawals and p.permits_universal_transfer
+    assert p.enable_internal_transfer and p.enable_margin
+    assert p.enable_futures and p.enable_portfolio_margin_trading
+    assert not p.ip_restrict
+
 def test_perms_from_api_maps_camelcase():
     api = {"enableSpotAndMarginTrading": True, "enableWithdrawals": False,
            "permitsUniversalTransfer": False, "enableInternalTransfer": False,
