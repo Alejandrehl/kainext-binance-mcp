@@ -194,3 +194,36 @@ class BacktestResult(BaseModel):
     win_rate: float
     max_drawdown_pct: float
     disclaimer: str
+
+
+# --- Capa 3: noticias + sentiment (read-only). Sentiment en float (señal cruda, spec §4). ---
+
+class NewsItem(BaseModel):
+    """Un ítem de noticia normalizado desde un feed RSS (spec §4).
+
+    ``published`` es epoch en segundos. ``sentiment`` es el score crudo del item en
+    [-1, +1] (léxico determinista, ver ``news.sentiment``). ``assets`` son los símbolos
+    canónicos detectados en título+resumen.
+    """
+    title: str
+    summary: str
+    source: str
+    published: int
+    url: str
+    assets: list[str] = []
+    sentiment: float = 0.0
+
+
+class SentimentResult(BaseModel):
+    """Agregado de sentiment crudo por activo sobre una ventana (spec §4).
+
+    ``score`` = promedio del sentiment de los ``n_items`` del activo en la ventana.
+    ``sample`` son items representativos. ``disclaimer`` es obligatorio y explícito:
+    señal cruda, no es análisis; el juicio fino lo hace Claude leyendo los items.
+    """
+    asset: str
+    window_hours: int
+    score: float
+    n_items: int
+    sample: list[NewsItem] = []
+    disclaimer: str
