@@ -13,10 +13,11 @@ from kainext_binance_mcp.ipc import IpcClient
 from kainext_binance_mcp.market import MarketEstimator, SymbolFilters, parse_symbol_filters
 from kainext_binance_mcp.models import (
     AccountInfo, AssetBalance, BacktestResult, Env, IndicatorResult, Kline,
-    OpenOrder, OrderProposal, OrderStatus, OrderType, PriceTicker, Side,
-    Ticker24h, TimeInForce,
+    NewsItem, OpenOrder, OrderProposal, OrderStatus, OrderType, PriceTicker,
+    SentimentResult, Side, Ticker24h, TimeInForce,
 )
 from kainext_binance_mcp.tools import marketdata as marketdata_tools
+from kainext_binance_mcp.tools import news as news_tools
 from kainext_binance_mcp.tools import read as read_tools
 from kainext_binance_mcp.tools import write as write_tools
 
@@ -53,10 +54,11 @@ def _make_estimator(client: object) -> MarketEstimator:
 
 def _register_tools(client: object, ipc: IpcClient, market: MarketEstimator,
                     *, is_testnet: bool) -> None:
-    """Registra las 13 tools. Cada @mcp.tool() delega en las funciones ya testeadas
-    de tools/read.py, tools/write.py y tools/marketdata.py. Las read y las de market
-    data (capa 2) reciben `client`; las write reciben `ipc`/`market`/`client` según
-    corresponda. El server NUNCA ejecuta; capa 2 es 100% read-only."""
+    """Registra las 15 tools. Cada @mcp.tool() delega en las funciones ya testeadas
+    de tools/read.py, tools/write.py, tools/marketdata.py y tools/news.py. Las read y
+    las de market data (capa 2) reciben `client`; las de noticias (capa 3) no reciben
+    client (RSS público); las write reciben `ipc`/`market`/`client` según corresponda.
+    El server NUNCA ejecuta; las capas 2 y 3 son 100% read-only."""
 
     # --- 5 tools de lectura (read key) ---
     @mcp.tool()
@@ -106,6 +108,19 @@ def _register_tools(client: object, ipc: IpcClient, market: MarketEstimator,
                          limit: int = 500) -> BacktestResult:
         """Backtest liviano SIN LOOKAHEAD de una regla simple (ema_cross/rsi_threshold)."""
         return marketdata_tools.backtest(client, symbol, interval, strategy, limit)
+
+    # --- 2 tools de capa 3: noticias + sentiment (RSS público, 100% read-only) ---
+    # No reciben `client`: leen feeds RSS sin API key. Sentiment es señal cruda (disclaimer).
+    @mcp.tool()
+    def binance_get_news(asset: str | None = None, sources: list[str] | None = None,
+                         limit: int | None = None) -> list[NewsItem]:
+        """Noticias crypto desde RSS (CoinDesk, crypto.news), filtrables por activo/fuente."""
+        return news_tools.get_news(asset=asset, sources=sources, limit=limit)
+
+    @mcp.tool()
+    def binance_get_sentiment(asset: str, window_hours: int = 24) -> SentimentResult:
+        """Sentiment CRUDO agregado de un activo sobre una ventana (léxico, no es predicción)."""
+        return news_tools.get_sentiment(asset, window_hours=window_hours)
 
     # --- 4 tools de escritura two-phase (server propone; NUNCA ejecuta) ---
     # Los Literal (Side/OrderType/Env/TimeInForce) viajan al schema de la tool y los

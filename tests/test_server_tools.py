@@ -134,3 +134,44 @@ def test_capa2_marketdata_tools_delegate_to_client():
     # Read-only: jamás coloca ni cancela órdenes.
     client.create_order.assert_not_called()
     client.cancel_order.assert_not_called()
+
+
+def test_capa3_news_tools_delegate_without_client(monkeypatch):
+    """Las 2 tools read-only de capa 3 quedan registradas y delegan en tools/news.
+
+    No reciben client (RSS público). Mockeamos el registro de fuentes para no tocar red.
+    """
+    from kainext_binance_mcp.models import NewsItem, SentimentResult
+    from kainext_binance_mcp.news import fetch as fetchmod
+    from kainext_binance_mcp.tools import news as news_tools
+
+    class _FakeSource:
+        name = "coindesk"
+
+        def fetch(self):
+            now = 2_000_000
+            return [
+                NewsItem(title="Bitcoin surges", summary="", source="coindesk",
+                         published=now - 100, url="https://e/x", assets=["BTC"], sentiment=0.5),
+                NewsItem(title="ETH news", summary="", source="coindesk",
+                         published=now - 200, url="https://e/y", assets=["ETH"], sentiment=-0.2),
+            ]
+
+    fake_registry = {"coindesk": _FakeSource()}
+    monkeypatch.setattr(news_tools, "SOURCES", fake_registry)
+    # Cache de módulo fresco + reloj fijo (sin red, determinista).
+    monkeypatch.setattr(news_tools, "_MODULE_CACHE",
+                        fetchmod.NewsCache(ttl_seconds=300, clock=lambda: 1000.0))
+    monkeypatch.setattr(news_tools.time, "time", lambda: 2_000_000)
+
+    tm = _register(MagicMock(), MagicMock(), MagicMock(), is_testnet=True)
+
+    news = _fn(tm, "binance_get_news")(asset="BTC")
+    assert news and all(isinstance(i, NewsItem) for i in news)
+    assert all("BTC" in i.assets for i in news)
+
+    sent = _fn(tm, "binance_get_sentiment")("BTC", 24)
+    assert isinstance(sent, SentimentResult)
+    assert sent.asset == "BTC"
+    assert sent.n_items == 1
+    assert sent.disclaimer.strip()
