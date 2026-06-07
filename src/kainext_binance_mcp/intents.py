@@ -15,13 +15,17 @@ class IntentStateError(Exception):
 @dataclass
 class Intent:
     intent_id: str
-    order: CanonicalOrder
+    order: CanonicalOrder | None
     created_at: int
     expires_at: int
     _state: str = "pending"
     approved: bool = False
     result: OrderResult | None = None
     error: ToolError | None = None
+    # Sólo poblados para intents de cancelación (en ese caso `order` es None):
+    kind: str = "order"
+    cancel_symbol: str | None = None
+    cancel_order_id: int | None = None
 
     @property
     def state(self) -> str:
@@ -40,6 +44,23 @@ class IntentStore:
         self._items[iid] = Intent(intent_id=iid, order=order, created_at=t,
                                   expires_at=t + self.ttl_seconds)
         return iid
+
+    def register_cancel(self, symbol: str, order_id: int) -> str:
+        iid = uuid.uuid4().hex
+        t = self.now()
+        self._items[iid] = Intent(intent_id=iid, order=None, created_at=t,
+                                  expires_at=t + self.ttl_seconds, kind="cancel",
+                                  cancel_symbol=symbol, cancel_order_id=order_id)
+        return iid
+
+    def pending_count(self) -> int:
+        """Cuántos intents siguen pendientes (no terminales ni expirados).
+        Recorre por get() para que la expiración perezosa se aplique."""
+        n = 0
+        for iid in list(self._items):
+            if self.get(iid)._state == "pending":
+                n += 1
+        return n
 
     def get(self, iid: str) -> Intent:
         it = self._items.get(iid)

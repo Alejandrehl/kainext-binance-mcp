@@ -33,6 +33,47 @@ def handle_intent(*, order: CanonicalOrder, intent_id: str, store: IntentStore,
         store.mark_failed(intent_id, ToolError(code=code, message=map_binance_error(code, msg)))
 
 
+def handle_cancel_intent(*, symbol: str, order_id: int, env: str, intent_id: str,
+                         store: IntentStore, client: Client,
+                         confirm: Callable[[str], bool]) -> None:
+    """Cancelación autoritativa. Re-consulta estado JUSTO antes de cancelar (TOCTOU,
+    spec §4.3/§3.2) y NUNCA cancela sin el clic. Invariante: sin confirm → no cancela."""
+    from kainext_binance_mcp_confirmer.dialog import render_cancel_dialog_text
+    try:
+        current = client.get_order(symbol=symbol, orderId=order_id)
+    except Exception as e:  # noqa: BLE001
+        code, msg = _extract(e)
+        store.mark_failed(intent_id, ToolError(code=code, message=map_binance_error(code, msg)))
+        return
+    status = current.get("status")
+    if status in _NOT_CANCELABLE:
+        store.mark_failed(intent_id, ToolError(
+            code=-2011, message=f"La orden {order_id} ya no es cancelable (estado {status})."))
+        return
+    if not confirm(render_cancel_dialog_text(symbol=symbol, order_id=order_id, env=env, status=status)):
+        store.mark_rejected(intent_id)
+        return
+    store.mark_approved(intent_id)
+    try:
+        raw = client.cancel_order(symbol=symbol, orderId=order_id)
+        store.mark_executed(intent_id, _to_cancel_result(raw, env))
+    except Exception as e:  # noqa: BLE001
+        code, msg = _extract(e)
+        store.mark_failed(intent_id, ToolError(code=code, message=map_binance_error(code, msg)))
+
+
+_NOT_CANCELABLE = {"FILLED", "CANCELED", "EXPIRED"}
+
+
+def _to_cancel_result(raw: dict[str, Any], env: str) -> OrderResult:
+    return OrderResult(
+        order_id=raw["orderId"], client_order_id=raw.get("origClientOrderId", raw.get("clientOrderId", "")),
+        status=raw.get("status", "CANCELED"),
+        executed_qty=Decimal(raw.get("executedQty", "0")),
+        cummulative_quote_qty=Decimal(raw.get("cummulativeQuoteQty", "0")),
+        env=env)  # type: ignore[arg-type]
+
+
 def _create(client: Client, order: CanonicalOrder, preview: Any, cid: str) -> dict[str, Any]:
     params: dict[str, Any] = {"symbol": order.symbol, "side": order.side,
                               "type": order.type, "newClientOrderId": cid}

@@ -22,6 +22,17 @@ def render_dialog_text(order: CanonicalOrder, preview: OrderPreview) -> str:
     return "\n".join(lines)
 
 
+def render_cancel_dialog_text(*, symbol: str, order_id: int, env: str,
+                              status: str | None = None) -> str:
+    """Texto del diálogo de cancelación. Como el resto del gate, lo renderiza el
+    confirmador desde los campos que él mismo va a ejecutar (spec §4.3)."""
+    env_banner = "⚠️ PLATA REAL (MAINNET)" if env == "mainnet" else "TESTNET"
+    lines = [env_banner, "", f"CANCELAR orden {order_id}  {symbol}"]
+    if status is not None:
+        lines.append(f"Estado actual: {status}")
+    return "\n".join(lines)
+
+
 def parse_osascript_result(*, returncode: int, stdout: str) -> bool:
     # Confirmar = exit 0 + 'button returned:Confirmar'. Cualquier otra cosa = NO ejecutar.
     return returncode == 0 and stdout.strip().endswith(":Confirmar")
