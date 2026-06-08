@@ -1,6 +1,6 @@
 # kainext-binance-mcp
 
-MCP server de Binance (**spot, capa 1**) — producto KaiNext. Permite, desde Claude Code,
+MCP server de Binance (**spot, capas 1–4**) — producto KaiNext. Permite, desde Claude Code,
 ver saldos/órdenes/precios y **ejecutar órdenes spot con dinero real**, bajo un gate de
 confirmación humana: nada se ejecuta sin un clic físico del operador, y el humano confirma
 **exactamente** los campos que se ejecutan.
@@ -87,7 +87,7 @@ Sólo la **read key** + `BINANCE_ENV` (la trade key jamás va acá):
   "mcpServers": {
     "binance": {
       "command": "uvx",
-      "args": ["--from", "git+https://github.com/kainext/kainext-binance-mcp", "kainext-binance-mcp"],
+      "args": ["--from", "git+ssh://git@github.com/Alejandrehl/kainext-binance-mcp", "kainext-binance-mcp"],
       "env": {
         "BINANCE_ENV": "${BINANCE_ENV}",
         "BINANCE_READ_API_KEY": "${BINANCE_READ_API_KEY}",
@@ -159,7 +159,7 @@ credenciales. No hay multi-cuenta dentro de un mismo proceso.
 
 ---
 
-## Tools disponibles (9)
+## Tools disponibles (18)
 
 ### Lectura (5 · read key · sin gate)
 
@@ -170,6 +170,30 @@ credenciales. No hay multi-cuenta dentro de un mismo proceso.
 | `binance_get_order_history` | Historial spot cerrado | `symbol`, `limit?` |
 | `binance_get_account_info` | Flags + comisiones; permisos de la key (mainnet) | — |
 | `binance_get_price` | Precio/ticker de un símbolo | `symbol` |
+
+### Market data — capa 2 (4 · read key · 100% read-only)
+
+| Tool | Qué hace | Params |
+|---|---|---|
+| `binance_get_klines` | Velas OHLCV (Decimal) de un par/intervalo | `symbol`, `interval`, `limit?` (≤1000) |
+| `binance_get_ticker_24h` | Stats rolling 24h (cambio %, high/low, volumen, último) | `symbol` |
+| `binance_compute_indicators` | RSI/MACD/EMA/Bollinger/ATR alineados a las velas | `symbol`, `interval`, `indicators`, `limit?` |
+| `binance_backtest` | Backtest liviano sin lookahead de una regla simple | `symbol`, `interval`, `strategy` (`ema_cross`/`rsi_threshold`), `limit?` |
+
+### Noticias + sentiment — capa 3 (2 · RSS público · sin API key · 100% read-only)
+
+| Tool | Qué hace | Params |
+|---|---|---|
+| `binance_get_news` | Noticias crypto desde RSS (CoinDesk, crypto.news) | `asset?`, `sources?`, `limit?` |
+| `binance_get_sentiment` | Sentiment CRUDO agregado (léxico, no es predicción) | `asset`, `window_hours?` |
+
+### Señales — capa 4 (3 · read key · PROPONEN, no ejecutan)
+
+| Tool | Qué hace | Params |
+|---|---|---|
+| `binance_generate_signal` | Señal compuesta y transparente: dirección + score + rationale por factor + niveles ATR | `symbol`, `interval?`, `threshold?` |
+| `binance_scan_signals` | Señales de una watchlist rankeadas por score | `symbols`, `interval?` |
+| `binance_backtest_signal` | Backtestea la señal técnica compuesta (sin lookahead, sentiment=0) | `symbol`, `interval?`, `limit?`, `threshold?` |
 
 ### Escritura (4 · two-phase · sólo spot · el server nunca ejecuta)
 

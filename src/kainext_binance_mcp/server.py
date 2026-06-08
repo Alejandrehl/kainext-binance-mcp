@@ -55,7 +55,7 @@ def _make_estimator(client: object) -> MarketEstimator:
 
 def _register_tools(client: object, ipc: IpcClient, market: MarketEstimator,
                     *, is_testnet: bool) -> None:
-    """Registra las 19 tools. Cada @mcp.tool() delega en las funciones ya testeadas
+    """Registra las 18 tools. Cada @mcp.tool() delega en las funciones ya testeadas
     de tools/read.py, tools/write.py, tools/marketdata.py, tools/news.py y tools/signals.py.
     Las read, las de market data (capa 2) y las de señales (capa 4) reciben `client`; las de
     noticias (capa 3) no reciben client (RSS público); las write reciben `ipc`/`market`/`client`
