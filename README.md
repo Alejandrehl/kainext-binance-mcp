@@ -1,86 +1,166 @@
 # kainext-binance-mcp
 
-MCP server de Binance (**spot, capas 1–4**) — producto KaiNext. Permite, desde Claude Code,
-ver saldos/órdenes/precios y **ejecutar órdenes spot con dinero real**, bajo un gate de
-confirmación humana: nada se ejecuta sin un clic físico del operador, y el humano confirma
-**exactamente** los campos que se ejecutan.
+[![CI](https://github.com/Alejandrehl/kainext-binance-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/Alejandrehl/kainext-binance-mcp/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/)
+[![MCP](https://img.shields.io/badge/MCP-server-7c3aed)](https://modelcontextprotocol.io/)
+[![Tests](https://img.shields.io/badge/tests-289%20passing-brightgreen.svg)](#development)
+[![Coverage](https://img.shields.io/badge/coverage-99%25-brightgreen.svg)](#development)
+[![Typed: mypy strict](https://img.shields.io/badge/typed-mypy%20strict-blue.svg)](pyproject.toml)
 
-> ⚠️ **PLATA REAL.** En `mainnet` cada orden mueve dinero de verdad. **Empezá siempre en
-> testnet** (ver más abajo) y pasá a mainnet sólo con todo verificado.
-> ⚠️ **Capa 1 requiere macOS.** El confirmador usa `osascript` (diálogo nativo) para pedir
-> el clic. En otros sistemas el confirmador no funciona todavía (ver Roadmap).
+> **Let an AI assistant read Binance spot markets, analyze them, and *propose* real-money
+> trades — while a separate, human-gated process is the only thing that can ever execute.
+> The model never holds a trade key, and nothing moves without a physical click.**
+
+`kainext-binance-mcp` is a [Model Context Protocol](https://modelcontextprotocol.io/) server
+that connects any MCP client (Claude Code, Claude Desktop, …) to a Binance **spot** account.
+It exposes **18 tools** spanning live market data, technical indicators, news & sentiment,
+transparent trading signals, and **two-phase order execution with a human in the loop**.
+
+It is built around one uncompromising idea: **treat the language model as untrusted.** Even a
+fully prompt-injected or malfunctioning model cannot move your funds, because it has neither
+the credential nor the authority to do so. See [SECURITY.md](SECURITY.md) for the full threat
+model.
+
+> ⚠️ **Real money.** On `mainnet`, every order moves actual funds. **Always start on
+> [testnet](#testnet-first-recommended)** and switch to mainnet only once everything is
+> verified.
+> ⚠️ **Execution currently requires macOS.** The confirmer uses `osascript` for the native
+> confirmation dialog. Read/analysis tools are cross-platform; execution on other OSes is on
+> the [roadmap](#roadmap).
 
 ---
 
-## Arquitectura: dos procesos, privilegio mínimo
+## Why this exists
 
-| Proceso | Lo lanza | Key | Rol |
+LLM agents are great at *reasoning about* markets and terrible at being *trusted with*
+irreversible, money-moving actions. Most "AI trading" tooling hands the model an API key and
+hopes for the best. This project takes the opposite stance: the AI gets rich, read-only
+context and a way to **propose** an action, but a **human holds the trigger** and a
+**separate process holds the key**. You get the upside of an AI co-pilot for spot trading
+without surrendering custody or control.
+
+## Security model — the headline feature
+
+Two processes, least privilege, human-in-the-loop:
+
+| Process | Launched by | Key | Role |
 |---|---|---|---|
-| **MCP server** `kainext-binance-mcp` | Claude Code (stdio) | **read-only** (`BINANCE_READ_*`) | lee, pre-valida y **propone** órdenes al confirmador. **No ejecuta, no tiene trade key.** |
-| **Confirmador** `kainext-binance-mcp-confirmer` | vos, en otra terminal | **trade** (`BINANCE_TRADE_*`) | **única autoridad:** recibe los campos canónicos, renderiza el diálogo, re-valida, y **ejecuta sólo al clic**. |
+| **MCP server** `kainext-binance-mcp` | your MCP client (stdio) | **read-only** (`BINANCE_READ_*`) | reads, pre-validates, and **proposes** orders. **Never executes, holds no trade key.** |
+| **Confirmer** `kainext-binance-mcp-confirmer` | **you**, in a separate terminal | **trade** (`BINANCE_TRADE_*`) | the **sole authority**: receives canonical fields, renders the dialog, re-validates, and **executes only on your click**. |
 
-Para que se ejecute una orden se necesitan **las dos cosas**: la trade key (sólo en el
-confirmador) **y** el clic humano (sólo vos). El modelo nunca tiene ninguna de las dos.
+```mermaid
+sequenceDiagram
+    participant AI as AI model (untrusted)
+    participant S as MCP server<br/>(read-only key)
+    participant C as Confirmer<br/>(trade key)
+    participant H as You (human)
+    participant B as Binance
 
-**Single-tenant: un proceso por cuenta.** Cada server+confirmador atiende **una** cuenta de
-Binance (las keys vienen del entorno). Para varias cuentas, levantá procesos separados con
-sus propias env vars; no hay multiplexación dentro de un proceso.
-
----
-
-## (a) Crear DOS API keys spot en Binance
-
-Andá a Binance → **API Management** y creá **dos** keys spot distintas:
-
-1. **READ-ONLY** (la usa el server):
-   - **Enable Reading**: ON.
-   - **Spot & Margin Trading**: **OFF**.
-   - Withdrawals / Universal Transfer / Internal Transfer / Margin / Futures: **OFF**.
-
-2. **TRADE** (la usa el confirmador):
-   - **Enable Spot & Margin Trading**: **ON** (es el único flag que habilita tradear spot).
-   - **Enable Withdrawals**: **OFF**.
-   - **Permits Universal Transfer**: **OFF**.
-   - **Enable Internal Transfer**: **OFF**.
-   - **Margin / Futures / Portfolio Margin**: **OFF**.
-   - **IP whitelist (Restrict access to trusted IPs only): OBLIGATORIA.** Sin IP whitelist
-     Binance termina auto-borrando la key, y una trade key usable desde cualquier IP es un
-     riesgo inaceptable. El confirmador **aborta el arranque** en mainnet si la trade key no
-     tiene `ipRestrict` activo o tiene cualquiera de los permisos peligrosos arriba.
-
-> El flag `enableSpotAndMarginTrading` agrupa spot + margin (Binance no los separa). La
-> no-ejecución de margin se garantiza **en código**: el confirmador nunca llama endpoints de
-> margin. Retiros y transferencias quedan **fuera de alcance permanente** (ninguna key los
-> habilita).
-
----
-
-## (b) Setear las env vars
-
-| Variable | Proceso | Dónde va |
-|---|---|---|
-| `BINANCE_ENV` | ambos | `testnet` o `mainnet` (sin default → **aborta** si falta o es inválida) |
-| `BINANCE_READ_API_KEY` / `BINANCE_READ_API_SECRET` | server | `.mcp.json` (vía `${VAR}`) o el shell del server |
-| `BINANCE_TRADE_API_KEY` / `BINANCE_TRADE_API_SECRET` | confirmador | **SÓLO el shell donde lanzás el confirmador** |
-
-> 🔒 **Regla dura:** la **trade key NUNCA va en `.mcp.json`** ni en el entorno de Claude Code.
-> Vive sólo en el shell del confirmador. Así, aunque el modelo controle por completo el server,
-> no tiene con qué ejecutar. Todas las variables son obligatorias y no-vacías en su proceso
-> (whitespace cuenta como vacío → aborta).
-
-En el shell del confirmador:
-
-```bash
-export BINANCE_ENV=testnet
-export BINANCE_TRADE_API_KEY="...tu trade key..."
-export BINANCE_TRADE_API_SECRET="...tu trade secret..."
+    AI->>S: binance_spot_order_propose(...)
+    S->>S: pre-validate vs symbol filters
+    S->>C: canonical fields (local IPC socket)
+    S-->>AI: intent_id (no order placed yet)
+    C->>H: native dialog with exact fields ⚠️
+    H-->>C: physical click: Confirm / Cancel
+    C->>C: re-validate
+    C->>B: execute (only if confirmed)
+    AI->>S: binance_spot_order_status(intent_id)
+    S-->>AI: pending → executed / rejected / expired
 ```
 
+To execute one order you need **both** the trade key (isolated in the confirmer) **and** your
+physical click. The model has neither. Defense in depth on top of that:
+
+- On **mainnet**, the server aborts at startup if its read key can trade.
+- The confirmer aborts at startup if the trade key has withdrawals/transfer/margin/futures
+  permissions or no IP whitelist.
+- Withdrawals and transfers are **permanently out of scope** — no key enables them.
+- **Single-tenant:** one server+confirmer pair serves exactly one account; run separate pairs
+  for separate accounts.
+
 ---
 
-## (c) Ejemplo de bloque `.mcp.json`
+## Tools (18)
 
-Sólo la **read key** + `BINANCE_ENV` (la trade key jamás va acá):
+### Read (5 · read key · no gate)
+
+| Tool | What it does | Params |
+|---|---|---|
+| `binance_get_balance` | Spot balances (free/locked), non-zero only | — |
+| `binance_get_price` | Current price/ticker for a symbol | `symbol` |
+| `binance_get_open_orders` | Open spot orders + status | `symbol?` |
+| `binance_get_order_history` | Closed spot order history | `symbol`, `limit?` |
+| `binance_get_account_info` | Flags + fees; key permissions (mainnet) | — |
+
+### Market data — layer 2 (4 · read key · 100% read-only)
+
+| Tool | What it does | Params |
+|---|---|---|
+| `binance_get_klines` | OHLCV candles (Decimal) for a pair/interval | `symbol`, `interval`, `limit?` (≤1000) |
+| `binance_get_ticker_24h` | Rolling 24h stats (% change, high/low, volume) | `symbol` |
+| `binance_compute_indicators` | RSI / MACD / EMA / Bollinger / ATR, aligned to candles | `symbol`, `interval`, `indicators`, `limit?` |
+| `binance_backtest` | Lightweight, no-lookahead backtest of a simple rule | `symbol`, `interval`, `strategy` (`ema_cross`/`rsi_threshold`), `limit?` |
+
+### News & sentiment — layer 3 (2 · public RSS · no API key · 100% read-only)
+
+| Tool | What it does | Params |
+|---|---|---|
+| `binance_get_news` | Crypto headlines from RSS (CoinDesk, crypto.news) | `asset?`, `sources?`, `limit?` |
+| `binance_get_sentiment` | Aggregated **raw** sentiment (lexicon, not a prediction) | `asset`, `window_hours?` |
+
+### Signals — layer 4 (3 · read key · *propose*, never execute)
+
+| Tool | What it does | Params |
+|---|---|---|
+| `binance_generate_signal` | Composite, transparent signal: direction + score + per-factor rationale + ATR risk levels | `symbol`, `interval?`, `threshold?` |
+| `binance_scan_signals` | Signals for a watchlist, ranked by score | `symbols`, `interval?` |
+| `binance_backtest_signal` | Backtest the composite technical signal (no lookahead, sentiment=0) | `symbol`, `interval?`, `limit?`, `threshold?` |
+
+### Write — two-phase (4 · spot only · the server never executes)
+
+| Tool | What it does | Params |
+|---|---|---|
+| `binance_spot_order_propose` | Proposes an order; **does not execute**. Returns `intent_id` | `symbol`, `side`, `type`, `env`, `quantity?`, `quote_quantity?`, `price?`, `time_in_force?` |
+| `binance_spot_order_status` | Polls the outcome of a proposal | `intent_id` |
+| `binance_cancel_order_propose` | Proposes a cancellation (re-checks state); **does not cancel** | `symbol`, `order_id`, `env` |
+| `binance_cancel_order_status` | Polls the outcome of a cancellation | `intent_id` |
+
+The read, market-data, news, and signal tools work without the confirmer. The `*_propose`
+tools require the confirmer to be running.
+
+---
+
+## Quickstart
+
+**Prerequisites:** Python 3.12+, [uv](https://docs.astral.sh/uv/), and (for execution) macOS.
+
+### 1. Create the API key(s) on Binance
+
+Go to Binance → **API Management**. The design uses two keys for least privilege:
+
+1. **Read-only** (used by the server): `Enable Reading` **ON**; everything else **OFF**.
+2. **Trade** (used by the confirmer): `Enable Spot & Margin Trading` **ON**; withdrawals,
+   universal/internal transfer, margin, futures **OFF**; **IP whitelist mandatory**. The
+   confirmer aborts on mainnet if any dangerous permission is on or the IP restriction is off.
+
+> On **testnet** ([testnet.binance.vision](https://testnet.binance.vision)), a single key
+> serves both roles — there are no granular permissions or IP whitelist there.
+
+### 2. Set environment variables
+
+| Variable | Process | Where it goes |
+|---|---|---|
+| `BINANCE_ENV` | both | `testnet` or `mainnet` (no default → aborts if missing/invalid) |
+| `BINANCE_READ_API_KEY` / `BINANCE_READ_API_SECRET` | server | `.mcp.json` (via `${VAR}`) or the server's shell |
+| `BINANCE_TRADE_API_KEY` / `BINANCE_TRADE_API_SECRET` | confirmer | **only** the shell where you launch the confirmer |
+
+> 🔒 **Hard rule:** the **trade key never goes in `.mcp.json`** or any environment your AI
+> client inherits. It lives only in the confirmer's shell.
+
+### 3. Add the server to your MCP client
+
+`.mcp.json` (Claude Code style). Only the read key + `BINANCE_ENV`:
 
 ```json
 {
@@ -98,122 +178,68 @@ Sólo la **read key** + `BINANCE_ENV` (la trade key jamás va acá):
 }
 ```
 
-Los `${VAR}` se resuelven desde tu shell. Si una variable llega **sin expandir** (literal
-`"${BINANCE_READ_API_KEY}"`), el server **aborta** con un mensaje claro: exportá las
-variables antes de lanzar Claude Code. `.mcp.json` con secretos va en `.gitignore` (nunca se
-versiona).
+`${VAR}` placeholders are resolved from your shell. If a variable arrives unexpanded, the
+server aborts with a clear message — export the variables before launching your client.
 
----
+### 4. Run the confirmer (required to execute)
 
-## (d) Arrancar el confirmador (requerido para ejecutar)
-
-El confirmador **debe estar corriendo** para poder proponer/ejecutar órdenes. Las tools de
-**lectura** funcionan sin él; las de **escritura** (`*_propose`) devuelven un error claro si
-el confirmador no está.
-
-En una terminal aparte (con la trade key exportada — paso (b)):
-
-```bash
-kainext-binance-mcp-confirmer
-```
-
-Queda escuchando en un Unix socket local. Cuando Claude proponga una orden, **aparece un
-diálogo nativo** con los campos exactos (símbolo, lado, tipo, cantidad efectiva, precio,
-`timeInForce`, notional estimado, y banner `TESTNET` / `⚠️ PLATA REAL`). El botón por
-defecto es **Cancelar**; sólo al tocar **Confirmar** se ejecuta la orden.
-
----
-
-## (e) Testnet-first (recomendado)
-
-1. Sacá keys de testnet en **https://testnet.binance.vision** (login con GitHub → *Generate
-   HMAC_SHA256 Key*). En testnet una sola key sirve para read y trade (no hay `apiRestrictions`).
-2. Exportá `BINANCE_ENV=testnet` y las keys de testnet en `BINANCE_READ_*` / `BINANCE_TRADE_*`.
-3. Probá el flujo completo con plata falsa antes de tocar mainnet.
-
-**Test de integración** (corre el flujo real contra testnet; el clic se stubea, no abre
-osascript):
+In a separate terminal, with the **trade** key exported:
 
 ```bash
 export BINANCE_ENV=testnet
-export BINANCE_TRADE_API_KEY=...   BINANCE_TRADE_API_SECRET=...
-export BINANCE_READ_API_KEY=...    BINANCE_READ_API_SECRET=...
-.venv/bin/python -m pytest -m integration -v
+export BINANCE_TRADE_API_KEY="...your trade key..."
+export BINANCE_TRADE_API_SECRET="...your trade secret..."
+
+uvx --from "git+ssh://git@github.com/Alejandrehl/kainext-binance-mcp" kainext-binance-mcp-confirmer
 ```
 
-Sin keys de testnet, ese test **skipea** limpio. El resto de la suite corre sin red:
-`.venv/bin/python -m pytest -q`.
+It listens on a local Unix socket. When the AI proposes an order, a **native dialog** appears
+with the exact fields (symbol, side, type, effective quantity, price, `timeInForce`, estimated
+notional, and a `TESTNET` / `⚠️ REAL MONEY` banner). The default button is **Cancel**; the
+order executes only when you click **Confirm**.
 
-## (f) Mainnet = plata real + macOS
+### Testnet-first (recommended)
 
-- En `mainnet` cada orden mueve **dinero real**: el confirmador re-valida contra los filtros
-  del símbolo, muestra el banner `⚠️ PLATA REAL` y espera tu clic. Empezá con órdenes mínimas.
-- **Capa 1 requiere macOS**: el diálogo de confirmación usa `osascript`. Sin macOS el
-  confirmador no puede pedir el clic (impl. headless/no-macOS pendiente).
+1. Generate keys at [testnet.binance.vision](https://testnet.binance.vision) (login with
+   GitHub → *Generate HMAC_SHA256 Key*) and request faucet funds.
+2. Export `BINANCE_ENV=testnet` and the testnet keys.
+3. Exercise the full flow with fake money before touching mainnet.
 
-## (g) Single-tenant (un proceso por cuenta)
+## Mainnet = real money + macOS
 
-Cada par server + confirmador opera **una sola** cuenta de Binance, definida por las env
-vars de ese proceso. Para operar otra cuenta, levantá otro par de procesos con sus propias
-credenciales. No hay multi-cuenta dentro de un mismo proceso.
+On `mainnet`, the confirmer re-validates against live symbol filters, shows the
+`⚠️ REAL MONEY` banner, and waits for your click. Start with minimal order sizes. Execution
+requires macOS (the dialog uses `osascript`).
 
 ---
 
-## Tools disponibles (18)
+## Development
 
-### Lectura (5 · read key · sin gate)
+Requires Python 3.12+ and `uv`. See [CONTRIBUTING.md](CONTRIBUTING.md) for details.
 
-| Tool | Qué hace | Params |
-|---|---|---|
-| `binance_get_balance` | Saldos spot (free/locked) no-cero | — |
-| `binance_get_open_orders` | Órdenes spot abiertas + estado | `symbol?` |
-| `binance_get_order_history` | Historial spot cerrado | `symbol`, `limit?` |
-| `binance_get_account_info` | Flags + comisiones; permisos de la key (mainnet) | — |
-| `binance_get_price` | Precio/ticker de un símbolo | `symbol` |
+```bash
+uv venv --python 3.12
+uv pip install -e ".[dev]"
 
-### Market data — capa 2 (4 · read key · 100% read-only)
+uv run ruff check src/     # lint
+uv run mypy                # strict type checking
+uv run pytest -q           # tests + coverage (gate: 90% min; currently ~99%)
+```
 
-| Tool | Qué hace | Params |
-|---|---|---|
-| `binance_get_klines` | Velas OHLCV (Decimal) de un par/intervalo | `symbol`, `interval`, `limit?` (≤1000) |
-| `binance_get_ticker_24h` | Stats rolling 24h (cambio %, high/low, volumen, último) | `symbol` |
-| `binance_compute_indicators` | RSI/MACD/EMA/Bollinger/ATR alineados a las velas | `symbol`, `interval`, `indicators`, `limit?` |
-| `binance_backtest` | Backtest liviano sin lookahead de una regla simple | `symbol`, `interval`, `strategy` (`ema_cross`/`rsi_threshold`), `limit?` |
+The unit suite runs fully offline. Integration tests (`-m integration`) hit Binance testnet
+and skip cleanly without keys. CI runs lint + types + tests on every push and PR.
 
-### Noticias + sentiment — capa 3 (2 · RSS público · sin API key · 100% read-only)
+## Roadmap
 
-| Tool | Qué hace | Params |
-|---|---|---|
-| `binance_get_news` | Noticias crypto desde RSS (CoinDesk, crypto.news) | `asset?`, `sources?`, `limit?` |
-| `binance_get_sentiment` | Sentiment CRUDO agregado (léxico, no es predicción) | `asset`, `window_hours?` |
+- Headless / non-macOS confirmation (today the dialog is macOS-only via `osascript`).
+- Additional order types and exchange surfaces beyond spot.
+- Optional notification channels for proposal/execution events.
 
-### Señales — capa 4 (3 · read key · PROPONEN, no ejecutan)
+## Author
 
-| Tool | Qué hace | Params |
-|---|---|---|
-| `binance_generate_signal` | Señal compuesta y transparente: dirección + score + rationale por factor + niveles ATR | `symbol`, `interval?`, `threshold?` |
-| `binance_scan_signals` | Señales de una watchlist rankeadas por score | `symbols`, `interval?` |
-| `binance_backtest_signal` | Backtestea la señal técnica compuesta (sin lookahead, sentiment=0) | `symbol`, `interval?`, `limit?`, `threshold?` |
+Built by **[Alejandro Exequiel Hernández Lara](https://github.com/Alejandrehl)** — founder of
+[KaiNext](https://www.kainext.cl). Part of KaiNext's MCP product line.
 
-### Escritura (4 · two-phase · sólo spot · el server nunca ejecuta)
+## License
 
-| Tool | Qué hace | Params |
-|---|---|---|
-| `binance_spot_order_propose` | Propone una orden; **no ejecuta**. Devuelve `intent_id` | `symbol`, `side`, `type`, `env`, `quantity?`, `quote_quantity?`, `price?`, `time_in_force?` |
-| `binance_spot_order_status` | Consulta el desenlace de la propuesta | `intent_id` |
-| `binance_cancel_order_propose` | Propone cancelar (re-consulta estado); **no cancela** | `symbol`, `order_id`, `env` |
-| `binance_cancel_order_status` | Consulta el desenlace de la cancelación | `intent_id` |
-
-## Flujo two-phase
-
-1. **propose** — Claude llama `binance_spot_order_propose`. El server arma los campos
-   canónicos, los manda al confirmador y devuelve un `intent_id` al instante (sin tocar
-   Binance).
-2. **confirmás** — en el confirmador aparece el diálogo con los valores exactos que se van a
-   ejecutar. Tocás **Confirmar** (o **Cancelar**). Sólo al confirmar, el confirmador re-valida
-   y ejecuta con la trade key.
-3. **status** — Claude pollea `binance_spot_order_status(intent_id)`: `pending` → `executed`
-   (con el resultado) / `rejected` / `expired` / `failed`. Si el confirmador está caído, el
-   estado es `unknown` (verificá en Binance; la orden pudo haberse ejecutado).
-
-La cancelación sigue el mismo patrón con `binance_cancel_order_propose` / `_status`.
+[MIT](LICENSE) © 2026 Alejandro Exequiel Hernández Lara (KaiNext)

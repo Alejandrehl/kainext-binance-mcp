@@ -1,7 +1,19 @@
 [project]
 name = "kainext-binance-mcp"
 version = "0.1.0"
-description = "MCP server de Binance (spot, capas 1–4) — KaiNext"
+description = "MCP server for Binance spot: read market data, analyze, and propose real-money trades behind a human-gated confirmer. The model never holds a trade key."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Alejandro Exequiel Hernández Lara" }]
+keywords = ["mcp", "binance", "trading", "crypto", "spot", "model-context-protocol", "llm", "ai-agent"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial :: Investment",
+    "Typing :: Typed",
+]
 requires-python = ">=3.12"
 dependencies = [
     "mcp[cli]==1.16.0",
@@ -13,6 +25,12 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest==8.3.3", "pytest-cov==5.0.0", "mypy==1.13.0", "ruff==0.7.2", "pytest-asyncio==0.24.0"]
+
+[project.urls]
+Homepage = "https://github.com/Alejandrehl/kainext-binance-mcp"
+Repository = "https://github.com/Alejandrehl/kainext-binance-mcp"
+Issues = "https://github.com/Alejandrehl/kainext-binance-mcp/issues"
+Security = "https://github.com/Alejandrehl/kainext-binance-mcp/blob/main/SECURITY.md"
 
 [project.scripts]
 kainext-binance-mcp = "kainext_binance_mcp.server:main"
