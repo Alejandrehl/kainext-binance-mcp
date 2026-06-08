@@ -64,6 +64,7 @@ def compute_indicators(
     interval: str,
     indicators: list[str],
     limit: int = 500,
+    last_n: int | None = None,
     **params: float,
 ) -> IndicatorResult:
     """Calcula los indicadores pedidos sobre las klines y los devuelve alineados a las velas.
@@ -72,6 +73,12 @@ def compute_indicators(
     ``rsi_period`` (14), ``ema_period`` (12), ``macd_fast/slow/signal`` (12/26/9),
     ``bollinger_period`` (20), ``bollinger_k`` (2.0), ``atr_period`` (14). Cada serie viene
     como ``list[float | None]`` (None en el periodo de calentamiento), alineada a las velas.
+
+    ``last_n`` recorta cada serie a sus últimos ``last_n`` valores (cola). ``None`` (default
+    de la función) devuelve la serie completa. Útil para no inflar el contexto: con
+    ``limit=500`` la respuesta completa son miles de puntos; un cliente LLM normalmente sólo
+    necesita el último valor (la tool MCP usa ``last_n=1`` por defecto). ``as_of`` siempre
+    refiere a la última vela, recorte o no.
     """
     if interval not in VALID_INTERVALS:
         raise ValueError(
@@ -117,6 +124,11 @@ def compute_indicators(
             out["atr"] = _series_to_list(
                 ind.atr(df["high"], df["low"], close, n=int(params.get("atr_period", 14)))
             )
+
+    if last_n is not None:
+        if last_n < 1:
+            raise ValueError("last_n debe ser >= 1 (o None para la serie completa)")
+        out = {name: series[-last_n:] for name, series in out.items()}
 
     as_of = int(df["close_time"].iloc[-1]) if len(df) else 0
     return IndicatorResult(symbol=symbol, interval=interval, indicators=out, as_of=as_of)

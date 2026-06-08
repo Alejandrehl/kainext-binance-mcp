@@ -119,6 +119,36 @@ def test_compute_indicators_with_params() -> None:
     assert len(res.indicators["ema"]) == 40
 
 
+def test_compute_indicators_last_n_truncates_tail() -> None:
+    c = MagicMock()
+    c.get_klines.return_value = _binance_klines(40)
+    res = md.compute_indicators(
+        c, "BTCUSDT", "1h", ["rsi", "macd", "bollinger"], limit=40, last_n=3
+    )
+    # Cada serie (incl. las expandidas de macd/bollinger) queda en sus últimos 3 valores.
+    for series in res.indicators.values():
+        assert len(series) == 3
+    # El recorte es la COLA: coincide con la serie completa sin recortar.
+    full = md.compute_indicators(c, "BTCUSDT", "1h", ["rsi"], limit=40)
+    assert res.indicators["rsi"] == full.indicators["rsi"][-3:]
+    # as_of no cambia con el recorte.
+    assert res.as_of == full.as_of
+
+
+def test_compute_indicators_last_n_one_is_latest_value() -> None:
+    c = MagicMock()
+    c.get_klines.return_value = _binance_klines(40)
+    res = md.compute_indicators(c, "BTCUSDT", "1h", ["ema"], limit=40, last_n=1)
+    assert len(res.indicators["ema"]) == 1
+
+
+def test_compute_indicators_last_n_invalid_raises() -> None:
+    c = MagicMock()
+    c.get_klines.return_value = _binance_klines(40)
+    with pytest.raises(ValueError, match="last_n"):
+        md.compute_indicators(c, "BTCUSDT", "1h", ["rsi"], limit=40, last_n=0)
+
+
 def test_compute_indicators_unknown_indicator_raises() -> None:
     c = MagicMock()
     c.get_klines.return_value = _binance_klines(40)

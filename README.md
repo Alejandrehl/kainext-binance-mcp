@@ -99,7 +99,7 @@ physical click. The model has neither. Defense in depth on top of that:
 |---|---|---|
 | `binance_get_klines` | OHLCV candles (Decimal) for a pair/interval | `symbol`, `interval`, `limit?` (≤1000) |
 | `binance_get_ticker_24h` | Rolling 24h stats (% change, high/low, volume) | `symbol` |
-| `binance_compute_indicators` | RSI / MACD / EMA / Bollinger / ATR, aligned to candles | `symbol`, `interval`, `indicators`, `limit?` |
+| `binance_compute_indicators` | RSI / MACD / EMA / Bollinger / ATR. Returns only the latest value per series by default (`last_n=1`) to keep responses small; raise `last_n` for recent history | `symbol`, `interval`, `indicators`, `limit?`, `last_n?` |
 | `binance_backtest` | Lightweight, no-lookahead backtest of a simple rule | `symbol`, `interval`, `strategy` (`ema_cross`/`rsi_threshold`), `limit?` |
 
 ### News & sentiment — layer 3 (2 · public RSS · no API key · 100% read-only)

@@ -100,9 +100,14 @@ def _register_tools(client: object, ipc: IpcClient, market: MarketEstimator,
 
     @mcp.tool()
     def binance_compute_indicators(symbol: str, interval: str, indicators: list[str],
-                                   limit: int = 500) -> IndicatorResult:
-        """RSI/MACD/EMA/Bollinger/ATR sobre las klines (valores float, alineados a velas)."""
-        return marketdata_tools.compute_indicators(client, symbol, interval, indicators, limit)
+                                   limit: int = 500, last_n: int = 1) -> IndicatorResult:
+        """RSI/MACD/EMA/Bollinger/ATR sobre las klines (valores float, alineados a velas).
+
+        Devuelve sólo los últimos `last_n` valores de cada serie (default 1 = sólo el valor
+        actual) para no inflar el contexto; subí `last_n` si necesitás ver la tendencia
+        reciente. `limit` sigue controlando cuántas velas se usan para el cálculo."""
+        return marketdata_tools.compute_indicators(
+            client, symbol, interval, indicators, limit, last_n=last_n)
 
     @mcp.tool()
     def binance_backtest(symbol: str, interval: str, strategy: Strategy,
