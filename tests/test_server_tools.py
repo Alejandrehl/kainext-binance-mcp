@@ -222,8 +222,9 @@ def test_analyst_tools_delegate_and_never_execute():
     names = {t.name for t in tm.list_tools()}
     assert {"binance_get_derivatives", "binance_get_market_structure",
             "binance_analyze_cycle", "binance_analyze_portfolio",
-            "binance_assess_risk"} <= names
-    assert len(names) == 23  # el conteo del producto: si cambia, actualizar docs/README
+            "binance_assess_risk", "binance_backtest_dca",
+            "binance_backtest_harvest"} <= names
+    assert len(names) == 25  # el conteo del producto: si cambia, actualizar docs/README
 
     rep = _fn(tm, "binance_analyze_portfolio")()
     assert rep.total_value_usdt == Decimal("0")

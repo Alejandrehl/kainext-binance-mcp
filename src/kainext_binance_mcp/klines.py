@@ -45,28 +45,7 @@ def fetch_klines(
     capped = max(1, min(int(limit), MAX_LIMIT))
     raw: list[list[Any]] = client.get_klines(symbol=symbol, interval=interval, limit=capped)
 
-    open_time = [int(r[0]) for r in raw]
-    close_time = [int(r[6]) for r in raw]
-    # Cadenas crudas para reconstruir Decimals exactos en klines_to_models.
-    raw_ohlcv = [
-        {"open": str(r[1]), "high": str(r[2]), "low": str(r[3]),
-         "close": str(r[4]), "volume": str(r[5])}
-        for r in raw
-    ]
-    df = pd.DataFrame(
-        {
-            "open_time": pd.Series(open_time, dtype="int64"),
-            "open": pd.Series([float(r[1]) for r in raw], dtype="float64"),
-            "high": pd.Series([float(r[2]) for r in raw], dtype="float64"),
-            "low": pd.Series([float(r[3]) for r in raw], dtype="float64"),
-            "close": pd.Series([float(r[4]) for r in raw], dtype="float64"),
-            "volume": pd.Series([float(r[5]) for r in raw], dtype="float64"),
-            "close_time": pd.Series(close_time, dtype="int64"),
-        },
-        columns=_COLUMNS,
-    )
-    df.attrs["raw_ohlcv"] = raw_ohlcv
-    return df
+    return _raw_to_df(raw)
 
 
 def klines_to_models(df: pd.DataFrame) -> list[Kline]:
@@ -98,3 +77,56 @@ def klines_to_models(df: pd.DataFrame) -> list[Kline]:
             )
         )
     return out
+
+
+def _raw_to_df(raw: list[list[Any]]) -> pd.DataFrame:
+    open_time = [int(r[0]) for r in raw]
+    close_time = [int(r[6]) for r in raw]
+    # Cadenas crudas para reconstruir Decimals exactos en klines_to_models.
+    raw_ohlcv = [
+        {"open": str(r[1]), "high": str(r[2]), "low": str(r[3]),
+         "close": str(r[4]), "volume": str(r[5])}
+        for r in raw
+    ]
+    df = pd.DataFrame(
+        {
+            "open_time": pd.Series(open_time, dtype="int64"),
+            "open": pd.Series([float(r[1]) for r in raw], dtype="float64"),
+            "high": pd.Series([float(r[2]) for r in raw], dtype="float64"),
+            "low": pd.Series([float(r[3]) for r in raw], dtype="float64"),
+            "close": pd.Series([float(r[4]) for r in raw], dtype="float64"),
+            "volume": pd.Series([float(r[5]) for r in raw], dtype="float64"),
+            "close_time": pd.Series(close_time, dtype="int64"),
+        },
+        columns=_COLUMNS,
+    )
+    df.attrs["raw_ohlcv"] = raw_ohlcv
+    return df
+
+
+def fetch_klines_range(client: Client, symbol: str, interval: str,
+                       start_ms: int, end_ms: int) -> pd.DataFrame:
+    """Velas de un RANGO temporal, paginando sobre el cap de 1000 de la API.
+
+    Necesario para backtests multianuales (la historia diaria de BTCUSDT parte el
+    2017-08-17). Devuelve el mismo DataFrame estandarizado de ``fetch_klines``."""
+    if interval not in VALID_INTERVALS:
+        raise ValueError(
+            f"invalid interval {interval!r}. Valid: {sorted(VALID_INTERVALS)}"
+        )
+    if start_ms >= end_ms:
+        raise ValueError("start_ms must be < end_ms")
+    chunks: list[list[Any]] = []
+    cursor = start_ms
+    while cursor < end_ms:
+        raw: list[list[Any]] = client.get_klines(
+            symbol=symbol, interval=interval, startTime=cursor, endTime=end_ms,
+            limit=MAX_LIMIT)
+        if not raw:
+            break
+        chunks.extend(raw)
+        last_close = int(raw[-1][6])
+        if len(raw) < MAX_LIMIT or last_close >= end_ms:
+            break
+        cursor = last_close + 1
+    return _raw_to_df(chunks)

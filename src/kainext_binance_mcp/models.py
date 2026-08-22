@@ -390,3 +390,49 @@ class RiskReport(BaseModel):
     notes: list[str]
     as_of: int
     disclaimer: str
+
+
+# --- Capa 6+ (v1.2): backtests de la doctrina (DCA / grilla de cosecha). ---
+
+
+class DcaBacktestResult(BaseModel):
+    """Simulación histórica de un plan DCA mecánico. NO es predicción (start-date
+    sensitivity real — probar varias ventanas). Comparación honesta vs lump-sum."""
+    symbol: str
+    months: int
+    monthly_quote: Decimal
+    total_invested: Decimal
+    accumulated_qty: Decimal
+    avg_cost: Decimal
+    value_now: Decimal
+    pnl_pct: float
+    lump_sum_value_now: Decimal
+    max_drawdown_pct: float
+    first_buy_date: str
+    last_buy_date: str
+    as_of: int
+    disclaimer: str
+
+
+class HarvestFill(BaseModel):
+    """Un tramo de la grilla ejecutado en la simulación (fill al nivel, como limit)."""
+    date: str
+    level: Decimal
+    qty_sold: Decimal
+    proceeds: Decimal
+
+
+class HarvestBacktestResult(BaseModel):
+    """Simulación de una grilla de cosecha pre-comprometida sobre cierres diarios.
+    Cada nivel dispara UNA vez (cruce al alza). Comparación vs puro hold."""
+    symbol: str
+    initial_qty: Decimal
+    fills: list[HarvestFill]
+    remaining_qty: Decimal
+    total_proceeds: Decimal
+    final_value: Decimal
+    pure_hold_value: Decimal
+    window_start: str
+    window_end: str
+    as_of: int
+    disclaimer: str

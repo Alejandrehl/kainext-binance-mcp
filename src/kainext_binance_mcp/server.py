@@ -22,8 +22,10 @@ from kainext_binance_mcp.models import (
     AssetBalance,
     BacktestResult,
     CycleAnalysis,
+    DcaBacktestResult,
     DerivativesSnapshot,
     Env,
+    HarvestBacktestResult,
     IndicatorResult,
     Kline,
     MarketStructure,
@@ -41,6 +43,8 @@ from kainext_binance_mcp.models import (
     Ticker24h,
     TimeInForce,
 )
+from kainext_binance_mcp.plans import backtest_dca as _backtest_dca
+from kainext_binance_mcp.plans import backtest_harvest as _backtest_harvest
 from kainext_binance_mcp.tools import analytics as analytics_tools
 from kainext_binance_mcp.tools import marketdata as marketdata_tools
 from kainext_binance_mcp.tools import news as news_tools
@@ -80,7 +84,7 @@ _make_estimator = runtime.make_estimator
 
 def _register_tools(client: object, ipc: IpcClient, market: MarketEstimator,
                     *, is_testnet: bool) -> None:
-    """Registra las 23 tools. Cada @mcp.tool() delega en las funciones ya testeadas
+    """Registra las 25 tools. Cada @mcp.tool() delega en las funciones ya testeadas
     de tools/read.py, tools/write.py, tools/marketdata.py, tools/news.py y tools/signals.py.
     Las read, las de market data (capa 2) y las de señales (capa 4) reciben `client`; las de
     noticias (capa 3) no reciben client (RSS público); las write reciben `ipc`/`market`/`client`
@@ -231,6 +235,25 @@ def _register_tools(client: object, ipc: IpcClient, market: MarketEstimator,
         per asset — defaults to current non-stable holdings. Rehearse drawdowns BEFORE
         the market does it (kb://discipline rule 2)."""
         return _g(lambda: analytics_tools.assess_risk(client, symbols))
+
+    @mcp.tool()
+    def binance_backtest_dca(symbol: str, monthly_quote: float, months: int,
+                             day_of_month: int = 5, fee: float = 0.001) -> DcaBacktestResult:
+        """Backtests a mechanical DCA plan on real history: invested, accumulated qty,
+        avg cost, value now, PNL, honest lump-sum comparison and max drawdown.
+        Simulation, NOT prediction — start-date sensitive (try several windows).
+        Doctrine: kb://discipline."""
+        return _g(lambda: _backtest_dca(client, symbol, monthly_quote, months,
+                                        day_of_month=day_of_month, fee=fee))
+
+    @mcp.tool()
+    def binance_backtest_harvest(symbol: str, initial_qty: float,
+                                 grid: list[dict[str, float]],
+                                 start: str | None = None) -> HarvestBacktestResult:
+        """Backtests a pre-committed harvest grid ([{level, sell_pct}], pct of CURRENT
+        holding, each level fires once on an upward daily-close crossing) vs pure hold.
+        Simulation, NOT prediction. Doctrine: kb://discipline rule 4."""
+        return _g(lambda: _backtest_harvest(client, symbol, initial_qty, grid, start=start))
 
     # --- 4 tools de escritura two-phase (server propone; NUNCA ejecuta) ---
     # Los Literal (Side/OrderType/Env/TimeInForce) viajan al schema de la tool y los
