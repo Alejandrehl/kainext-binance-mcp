@@ -98,6 +98,28 @@ class CoinDeskRSS(_RSSSource):
         super().__init__("coindesk", "https://www.coindesk.com/arc/outboundfeeds/rss/")
 
 
+class TheBlockRSS(_RSSSource):
+    """The Block — reporting data-driven (deals, infraestructura). Headlines confiables."""
+
+    def __init__(self) -> None:
+        super().__init__(name="theblock", url="https://www.theblock.co/rss.xml")
+
+
+class DecryptRSS(_RSSSource):
+    """Decrypt — cobertura amplia y accesible del ecosistema."""
+
+    def __init__(self) -> None:
+        super().__init__(name="decrypt", url="https://decrypt.co/feed")
+
+
+class FedPressRSS(_RSSSource):
+    """Federal Reserve press releases — macro PRIMARIO (FOMC, speeches). Sin sesgo:
+    es la fuente. El léxico de sentiment es crypto → estos items quedan neutros (correcto)."""
+
+    def __init__(self) -> None:
+        super().__init__(name="fed", url="https://www.federalreserve.gov/feeds/press_all.xml")
+
+
 class CryptoNewsRSS(_RSSSource):
     """crypto.news RSS (spec N2)."""
 
@@ -109,4 +131,7 @@ class CryptoNewsRSS(_RSSSource):
 SOURCES: dict[str, NewsSource] = {
     "coindesk": CoinDeskRSS(),
     "crypto_news": CryptoNewsRSS(),
+    "theblock": TheBlockRSS(),
+    "decrypt": DecryptRSS(),
+    "fed": FedPressRSS(),
 }

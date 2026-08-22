@@ -290,3 +290,103 @@ def validate_symbol(symbol: str) -> str:
     if not re.fullmatch(SYMBOL_PATTERN, symbol):
         raise ValueError(f"invalid symbol {symbol!r}: expected {SYMBOL_PATTERN} (e.g. BTCUSDT)")
     return symbol
+
+
+# --- Capa 5: datos de analista (derivados públicos + estructura de mercado). ---
+# Precios en Decimal (E3); ratios/métricas en float; campos degradables en None + notes.
+
+
+class DerivativesSnapshot(BaseModel):
+    """Termómetro de apalancamiento de un par (endpoints PÚBLICOS de futures, sin firma).
+
+    `last_funding_rate` > 0 = longs pagan (positioning alcista); sostenido > 0.0005/8h =
+    longs apiñados. `funding_history` = últimas N tasas (más antigua primero). En
+    BINANCE_ENV=testnet estos datos son sintéticos (lo dice el disclaimer)."""
+    symbol: str
+    mark_price: Decimal
+    index_price: Decimal
+    last_funding_rate: float
+    next_funding_time: int
+    funding_history: list[float]
+    open_interest: Decimal
+    as_of: int
+    disclaimer: str
+
+
+class MarketStructure(BaseModel):
+    """Estructura del mercado crypto completo (fuentes públicas, independientes de
+    BINANCE_ENV). CADA bloque degrada a None si su fuente falla — mirar `notes`.
+
+    Lectura: `kb://glossary` y `kb://frameworks/cycle-analysis`."""
+    fear_greed: int | None
+    fear_greed_label: str | None
+    fear_greed_week: list[int]
+    btc_dominance_pct: float | None
+    total_market_cap_usd: float | None
+    btc_ath_usd: Decimal | None
+    btc_ath_date: str | None
+    btc_ath_change_pct: float | None
+    mempool_fee_fast_sat_vb: int | None
+    hashrate_avg_ehs: float | None
+    notes: list[str]
+    as_of: int
+    disclaimer: str
+
+
+# --- Capa 6: analytics (frameworks calculados; float salvo precios). ---
+
+
+class CycleAnalysis(BaseModel):
+    """Inputs objetivos de posición de ciclo — la INTERPRETACIÓN la hace el cliente con
+    `kb://frameworks/cycle-analysis`. `mayer_multiple` = precio / MA200 diaria."""
+    symbol: str
+    price: Decimal
+    ma200d: Decimal | None
+    mayer_multiple: float | None
+    ath_usd: Decimal | None
+    drawdown_from_ath_pct: float | None
+    est_next_halving: str
+    notes: list[str]
+    as_of: int
+    disclaimer: str
+
+
+class PortfolioPosition(BaseModel):
+    """Una posición valorizada. `cost_basis`/`pnl_pct` sólo si el usuario aportó costos."""
+    asset: str
+    amount: Decimal
+    price_usdt: Decimal | None
+    value_usdt: Decimal | None
+    weight_pct: float | None
+    cost_basis: Decimal | None
+    pnl_pct: float | None
+
+
+class PortfolioReport(BaseModel):
+    """Valorización + concentración + break-even NETO paramétrico (sin datos personales
+    embebidos: cost_basis/tax_rate/spread son SIEMPRE parámetros del usuario)."""
+    positions: list[PortfolioPosition]
+    total_value_usdt: Decimal
+    top_concentration_pct: float | None
+    net_breakeven_note: str | None
+    notes: list[str]
+    as_of: int
+    disclaimer: str
+
+
+class AssetRisk(BaseModel):
+    """Métricas de riesgo de un activo (ventanas en días de velas 1d)."""
+    symbol: str
+    realized_vol_30d_pct: float | None
+    realized_vol_90d_pct: float | None
+    max_drawdown_pct: float | None
+    correlation_btc_90d: float | None
+
+
+class RiskReport(BaseModel):
+    """Riesgo del portafolio: vol/drawdown/correlación por activo. La interpretación
+    (sizing) vive en `kb://discipline` regla 2."""
+    assets: list[AssetRisk]
+    notes: list[str]
+    as_of: int
+    disclaimer: str

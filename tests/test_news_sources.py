@@ -70,8 +70,24 @@ def test_crypto_news_source_name(monkeypatch: pytest.MonkeyPatch) -> None:
     assert all(i.source == "crypto_news" for i in items)
 
 
-def test_registry_has_both_sources() -> None:
-    assert set(SOURCES.keys()) == {"coindesk", "crypto_news"}
+def test_registry_has_all_sources() -> None:
+    assert set(SOURCES.keys()) == {"coindesk", "crypto_news", "theblock", "decrypt", "fed"}
+
+
+def test_new_sources_are_rss_and_never_raise(monkeypatch) -> None:
+    """Las 3 fuentes v1.1 siguen el contrato: RSS + fetch() que nunca propaga."""
+    import kainext_binance_mcp.news.sources as srcmod
+    from kainext_binance_mcp.news.sources import DecryptRSS, FedPressRSS, TheBlockRSS
+
+    def _boom(url):
+        raise OSError("network down")
+
+    monkeypatch.setattr(srcmod.feedparser, "parse", _boom)
+    for src in (TheBlockRSS(), DecryptRSS(), FedPressRSS()):
+        assert src.fetch() == []  # degradación, nunca excepción
+    assert TheBlockRSS().name == "theblock"
+    assert DecryptRSS().name == "decrypt"
+    assert FedPressRSS().name == "fed"
 
 
 # --- error / vacío: nunca excepción, lista vacía ---

@@ -209,3 +209,29 @@ def test_capa4_signal_tools_delegate_to_client(monkeypatch):
     # Read-only / PROPONE: jamás coloca ni cancela órdenes.
     client.create_order.assert_not_called()
     client.cancel_order.assert_not_called()
+
+
+def test_analyst_tools_delegate_and_never_execute():
+    """Los 5 shims v1.1 delegan (capa 5/6) y jamás tocan órdenes."""
+    from decimal import Decimal
+    from unittest.mock import MagicMock, patch
+
+    client = MagicMock()
+    client.get_account.return_value = {"balances": []}
+    tm = _register(client, MagicMock(), MagicMock())
+    names = {t.name for t in tm.list_tools()}
+    assert {"binance_get_derivatives", "binance_get_market_structure",
+            "binance_analyze_cycle", "binance_analyze_portfolio",
+            "binance_assess_risk"} <= names
+    assert len(names) == 23  # el conteo del producto: si cambia, actualizar docs/README
+
+    rep = _fn(tm, "binance_analyze_portfolio")()
+    assert rep.total_value_usdt == Decimal("0")
+
+    with patch("kainext_binance_mcp.server._get_market_structure") as gm:
+        gm.return_value = MagicMock()
+        _fn(tm, "binance_get_market_structure")()
+        gm.assert_called_once()
+
+    client.create_order.assert_not_called()
+    client.cancel_order.assert_not_called()

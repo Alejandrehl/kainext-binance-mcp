@@ -10,29 +10,38 @@ from mcp.server.fastmcp import FastMCP
 
 from kainext_binance_mcp import runtime
 from kainext_binance_mcp.config import Settings, load_server_settings
+from kainext_binance_mcp.derivatives import get_derivatives as _get_derivatives
 from kainext_binance_mcp.errors import client_secrets, run_guarded
 from kainext_binance_mcp.guard import assert_read_key_safe
 from kainext_binance_mcp.ipc import IpcClient
+from kainext_binance_mcp.knowledge import register_knowledge
 from kainext_binance_mcp.market import MarketEstimator
+from kainext_binance_mcp.marketwide import get_market_structure as _get_market_structure
 from kainext_binance_mcp.models import (
     AccountInfo,
     AssetBalance,
     BacktestResult,
+    CycleAnalysis,
+    DerivativesSnapshot,
     Env,
     IndicatorResult,
     Kline,
+    MarketStructure,
     NewsItem,
     OpenOrder,
     OrderProposal,
     OrderStatus,
     OrderType,
+    PortfolioReport,
     PriceTicker,
+    RiskReport,
     SentimentResult,
     Side,
     Signal,
     Ticker24h,
     TimeInForce,
 )
+from kainext_binance_mcp.tools import analytics as analytics_tools
 from kainext_binance_mcp.tools import marketdata as marketdata_tools
 from kainext_binance_mcp.tools import news as news_tools
 from kainext_binance_mcp.tools import read as read_tools
@@ -44,7 +53,19 @@ Strategy = Literal["ema_cross", "rsi_threshold"]
 
 _T = TypeVar("_T")
 
-mcp = FastMCP("binance")
+_INSTRUCTIONS = (
+    "Security-first Binance spot server AND an honest crypto analysis consultant. "
+    "Ground rules for the client: (1) BEFORE giving any investment analysis or "
+    "recommendation, read the resources kb://discipline and kb://research/no-edge and "
+    "stay consistent with them — no price predictions, no timing calls, signals are "
+    "context not advice, nothing here is financial advice. (2) The server only READS "
+    "and PROPOSES; execution requires a separate human-gated confirmer process. "
+    "(3) Interpretive tools reference their framework resource in their description — "
+    "read it before interpreting. (4) The prompts (portfolio_review, asset_thesis, "
+    "market_briefing, risk_check, dca_plan) are the recommended methodologies."
+)
+
+mcp = FastMCP("binance", _INSTRUCTIONS)
 
 
 def bootstrap(env: Mapping[str, str]) -> tuple[Settings, object]:
@@ -59,7 +80,7 @@ _make_estimator = runtime.make_estimator
 
 def _register_tools(client: object, ipc: IpcClient, market: MarketEstimator,
                     *, is_testnet: bool) -> None:
-    """Registra las 18 tools. Cada @mcp.tool() delega en las funciones ya testeadas
+    """Registra las 23 tools. Cada @mcp.tool() delega en las funciones ya testeadas
     de tools/read.py, tools/write.py, tools/marketdata.py, tools/news.py y tools/signals.py.
     Las read, las de market data (capa 2) y las de señales (capa 4) reciben `client`; las de
     noticias (capa 3) no reciben client (RSS público); las write reciben `ipc`/`market`/`client`
@@ -169,6 +190,48 @@ def _register_tools(client: object, ipc: IpcClient, market: MarketEstimator,
         return _g(lambda: signals_tools.binance_backtest_signal(
             client, symbol, interval, limit, threshold=threshold))
 
+    # --- 5 analyst tools: capa 5 (datos) + capa 6 (frameworks) — 100% read-only ---
+    @mcp.tool()
+    def binance_get_derivatives(symbol: str, funding_limit: int = 8) -> DerivativesSnapshot:
+        """Public futures positioning for a pair: mark/index price, current funding rate,
+        short funding history, open interest. THE leverage thermometer — interpret with
+        the kb://glossary resource (funding, OI). No key permissions needed; on testnet
+        this data is synthetic."""
+        return _g(lambda: _get_derivatives(client, symbol, funding_limit=funding_limit))
+
+    @mcp.tool()
+    def binance_get_market_structure() -> MarketStructure:
+        """Whole-market context in one cheap call: Fear & Greed (+week series), BTC
+        dominance, total market cap, BTC ATH/drawdown, on-chain fees and hashrate.
+        Free public sources; any block may be None if its source is down (see notes).
+        Interpret with kb://frameworks/cycle-analysis and kb://glossary."""
+        return _g(lambda: _get_market_structure())
+
+    @mcp.tool()
+    def binance_analyze_cycle(symbol: str = "BTCUSDT") -> CycleAnalysis:
+        """Objective cycle-position inputs: Mayer Multiple (price/200d MA), drawdown from
+        ATH (BTC only), distance to the next halving. Interpret with
+        kb://frameworks/cycle-analysis — output a PHASE with uncertainty, never a target."""
+        return _g(lambda: analytics_tools.analyze_cycle(client, symbol))
+
+    @mcp.tool()
+    def binance_analyze_portfolio(cost_basis: dict[str, float] | None = None,
+                                  tax_rate: float = 0.0,
+                                  cashout_spread: float = 0.0) -> PortfolioReport:
+        """Values live balances; concentration; and — if the user provides their cost
+        basis per asset (USDT) plus tax_rate/cashout_spread — per-asset PNL and the NET
+        break-even (taxes+spread; local-currency effects excluded). No personal data is
+        stored: everything is a parameter. Sizing doctrine: kb://discipline."""
+        return _g(lambda: analytics_tools.analyze_portfolio(
+            client, cost_basis=cost_basis, tax_rate=tax_rate, cashout_spread=cashout_spread))
+
+    @mcp.tool()
+    def binance_assess_risk(symbols: list[str] | None = None) -> RiskReport:
+        """Realized volatility (30/90d), max drawdown (90d window) and BTC correlation
+        per asset — defaults to current non-stable holdings. Rehearse drawdowns BEFORE
+        the market does it (kb://discipline rule 2)."""
+        return _g(lambda: analytics_tools.assess_risk(client, symbols))
+
     # --- 4 tools de escritura two-phase (server propone; NUNCA ejecuta) ---
     # Los Literal (Side/OrderType/Env/TimeInForce) viajan al schema de la tool y los
     # re-valida Pydantic en runtime al construir CanonicalOrder (spec §3.3).
@@ -206,6 +269,7 @@ def main() -> None:  # pragma: no cover — arranque puro (proceso real + mcp.ru
     ipc = IpcClient(runtime.SOCKET_PATH)
     market = _make_estimator(client)
     _register_tools(client, ipc, market, is_testnet=settings.is_testnet)
+    register_knowledge(mcp)
     mcp.run(transport="stdio")
 
 
