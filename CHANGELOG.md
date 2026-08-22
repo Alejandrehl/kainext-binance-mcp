@@ -34,6 +34,9 @@ a separate human-gated confirmer holding the trade key is the only thing that ca
 - Backtest strategy label: `composite_technical_signal` (was Spanish).
 
 ### Fixed
+- Confirmer IPC: a local client that connects and disconnects without completing a request
+  no longer kills the serve loop (previously a `BrokenPipeError` took the whole confirmer
+  down — a local denial-of-service).
 - Confirmer: a failing authoritative re-estimate (network/symbol) now marks the intent
   `failed` immediately instead of killing the worker thread and leaving it `pending` for the
   300 s TTL.
@@ -48,7 +51,8 @@ a separate human-gated confirmer holding the trade key is the only thing that ca
   deduped; `signals/common.py` for shared indicator knobs/helpers (~130 duplicated lines removed).
 - Real ruff gate (`E,F,I,B,UP,SIM,BLE` + enforced line length) across `src/`, `tests/`,
   `examples/`; documented per-file-ignores. `ruff format` deliberately not adopted.
-- `python-binance` 1.0.36 → 1.0.37. `mcp` stays pinned at 1.16.0 — migrating to MCP SDK 2.x
-  is scheduled as its own release (see Roadmap).
+- `python-binance` 1.0.36 → 1.0.37; **`mcp` 1.16.0 → 1.29.0** — `pip-audit` flagged three
+  PYSEC advisories on 1.16.0 (PYSEC-2026-1617/3482/3483, all fixed by 1.28.1); staying on the
+  1.x line. Migrating to MCP SDK 2.x is scheduled as its own release (see Roadmap).
 - Personal one-off scripts removed from the repository (moved to private storage); the public
   research scripts live on as `examples/`.

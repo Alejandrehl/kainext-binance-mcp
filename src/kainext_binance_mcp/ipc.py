@@ -200,6 +200,10 @@ def serve(socket_path: str, store: Any, client: Any, nonce: str,
                 except Exception as e:  # noqa: BLE001 — nunca tumbar el loop
                     response = {"error": f"invalid message: {e}"}
                 conn.sendall(encode_msg(response).encode("utf-8"))
+            except OSError:
+                # Cliente que desconectó temprano (read vacío / broken pipe): se ignora.
+                # Un peer local NO debe poder tumbar el confirmador cerrando el socket.
+                pass
             finally:
                 conn.close()
     finally:

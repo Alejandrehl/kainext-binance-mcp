@@ -54,12 +54,23 @@ def running_socket(monkeypatch):
         target=serve, args=(sock_path, store, client, "nonce-test", lock, estimator), daemon=True)
     t.start()
 
-    # Esperar a que el socket exista.
+    # Esperar a que el socket ACEPTE conexiones (que el path exista no basta: en
+    # macOS/py3.13 el archivo aparece tras bind() pero antes de listen() → refused).
+    ready = False
     for _ in range(200):
         if os.path.exists(sock_path):
-            break
+            probe = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            try:
+                probe.connect(sock_path)
+            except OSError:
+                pass
+            else:
+                ready = True
+                break
+            finally:
+                probe.close()
         time.sleep(0.01)
-    assert os.path.exists(sock_path), "el confirmador no creó el socket a tiempo"
+    assert ready, "el confirmador no aceptó conexiones a tiempo"
 
     yield sock_path, store, client
 
@@ -167,3 +178,17 @@ def test_client_raises_when_socket_missing(tmp_path):
         cli.register(_order())
     with pytest.raises(IpcUnavailableError):
         cli.status("x")
+
+
+def test_early_disconnect_does_not_kill_server(running_socket):
+    """Un cliente local que conecta y cierra sin hablar (o a mitad de la respuesta) NO debe
+    tumbar el loop del confirmador — antes un BrokenPipeError mataba el hilo (DoS local)."""
+    sock_path, store, client = running_socket
+    for _ in range(3):
+        probe = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        probe.connect(sock_path)
+        probe.close()  # desconexión temprana, sin request
+    # El server sigue vivo: un register normal funciona después de los cierres abruptos.
+    ipc = IpcClient(sock_path)
+    intent_id, _ = ipc.register(_order())
+    assert isinstance(intent_id, str) and intent_id

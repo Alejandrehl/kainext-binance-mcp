@@ -234,7 +234,7 @@ and skip cleanly without keys. CI runs lint + types + tests on every push and PR
 
 ## Roadmap
 
-- Migrate to MCP SDK 2.x (v1.0.0 pins `mcp==1.16.0`; 2.0 is a breaking API change).
+- Migrate to MCP SDK 2.x (v1.0.0 pins `mcp==1.29.0`; 2.0 is a breaking API change).
 - Headless / non-macOS confirmation (today the dialog is macOS-only via `osascript`).
 - Additional order types and exchange surfaces beyond spot.
 - Optional notification channels for proposal/execution events.
