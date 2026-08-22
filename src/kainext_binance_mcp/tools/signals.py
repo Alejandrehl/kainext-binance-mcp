@@ -17,26 +17,19 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import TYPE_CHECKING, Callable
 
-import pandas as pd
 
 from kainext_binance_mcp import indicators as ind
 from kainext_binance_mcp.backtest import COMMISSION_TAKER
 from kainext_binance_mcp.klines import VALID_INTERVALS, fetch_klines
 from kainext_binance_mcp.models import BacktestResult, SentimentResult, Signal, validate_symbol
-from kainext_binance_mcp.signals import engine
+from kainext_binance_mcp.signals import common, engine
 from kainext_binance_mcp.signals.backtest_signal import backtest_signal
 from kainext_binance_mcp.tools import news as news_tools
 
 if TYPE_CHECKING:
     from binance.client import Client
 
-# Knobs por defecto de los indicadores (alineados con capa 2 / spec §4).
-_EMA_FAST = 12
-_EMA_SLOW = 26
-_RSI_PERIOD = 14
-_BOLL_PERIOD = 20
-_BOLL_K = 2.0
-_ATR_PERIOD = 14
+# Knobs de indicadores: en signals/common.py (compartidos con el backtest de la señal).
 _LIMIT = 200  # suficiente para el calentamiento de EMA26/MACD/Bollinger/ATR.
 
 # Quote assets conocidos de Binance: para derivar el activo base del símbolo (BTCUSDT → BTC)
@@ -59,30 +52,6 @@ def _base_asset(symbol: str) -> str:
         if up.endswith(quote) and len(up) > len(quote):
             return up[: -len(quote)]
     return up
-
-
-def _last_valid(series: pd.Series, default: float = 0.0) -> float:
-    """Último valor no-NaN de una serie de indicador (el del cierre más reciente utilizable).
-
-    Devuelve ``default`` si toda la serie es NaN (no debería pasar con _LIMIT velas, pero es
-    honesto y no rompe la señal: un factor sin dato calculable queda en su neutro). El neutro
-    depende del indicador — 0.0 para EMA/MACD/ATR, 50.0 para RSI, por eso es parametrizable.
-    """
-    s = series.dropna()
-    if s.empty:
-        return default
-    return float(s.iloc[-1])
-
-
-def _bb_position(price: float, lower: float, upper: float) -> float:
-    """Posición %B del precio dentro de las bandas de Bollinger: 0 = inferior, 1 = superior.
-
-    Si las bandas colapsan (upper == lower, serie plana) devuelve 0.5 (neutro: sin señal).
-    """
-    width = upper - lower
-    if width <= 0.0:
-        return 0.5
-    return (price - lower) / width
 
 
 def generate_signal_tool(
@@ -113,16 +82,16 @@ def generate_signal_tool(
     df = fetch_klines(client, symbol, interval, _LIMIT)
     close = df["close"]
 
-    ema_fast = _last_valid(ind.ema(close, _EMA_FAST))
-    ema_slow = _last_valid(ind.ema(close, _EMA_SLOW))
-    rsi = _last_valid(ind.rsi(close, _RSI_PERIOD), default=50.0)  # sin RSI → momentum neutro
+    ema_fast = common.last_valid(ind.ema(close, common.EMA_FAST))
+    ema_slow = common.last_valid(ind.ema(close, common.EMA_SLOW))
+    rsi = common.last_valid(ind.rsi(close, common.RSI_PERIOD), default=50.0)  # sin RSI → momentum neutro
     _macd_line, _signal_line, hist = ind.macd(close)
-    macd_hist = _last_valid(hist)
-    upper, _mid, lower = ind.bollinger(close, _BOLL_PERIOD, _BOLL_K)
-    atr_val = _last_valid(ind.atr(df["high"], df["low"], close, _ATR_PERIOD))
+    macd_hist = common.last_valid(hist)
+    upper, _mid, lower = ind.bollinger(close, common.BOLL_PERIOD, common.BOLL_K)
+    atr_val = common.last_valid(ind.atr(df["high"], df["low"], close, common.ATR_PERIOD))
 
     last_price_float = float(close.iloc[-1])
-    bb_pos = _bb_position(last_price_float, _last_valid(lower), _last_valid(upper))
+    bb_pos = common.bb_position(last_price_float, common.last_valid(lower), common.last_valid(upper))
 
     # Precio exacto en Decimal desde la cadena cruda de Binance (sin artefactos binarios).
     raw_ohlcv = df.attrs.get("raw_ohlcv")

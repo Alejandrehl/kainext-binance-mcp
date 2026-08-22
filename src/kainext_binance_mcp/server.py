@@ -7,12 +7,12 @@ from collections.abc import Callable
 
 from mcp.server.fastmcp import FastMCP
 
-from kainext_binance_mcp.client import make_client
+from kainext_binance_mcp import runtime
 from kainext_binance_mcp.errors import client_secrets, run_guarded
 from kainext_binance_mcp.config import Settings, load_server_settings
-from kainext_binance_mcp.guard import assert_read_key_safe, perms_from_api
+from kainext_binance_mcp.guard import assert_read_key_safe
 from kainext_binance_mcp.ipc import IpcClient
-from kainext_binance_mcp.market import MarketEstimator, SymbolFilters, parse_symbol_filters
+from kainext_binance_mcp.market import MarketEstimator
 from kainext_binance_mcp.models import (
     AccountInfo, AssetBalance, BacktestResult, Env, IndicatorResult, Kline,
     NewsItem, OpenOrder, OrderProposal, OrderStatus, OrderType, PriceTicker,
@@ -31,30 +31,15 @@ _T = TypeVar("_T")
 
 mcp = FastMCP("binance")
 
-# Socket del confirmador (debe coincidir con kainext_binance_mcp_confirmer.__main__.SOCKET_PATH).
-SOCKET_PATH = os.path.expanduser(
-    "~/Library/Application Support/kainext-binance-mcp/confirmer.sock")
-
 
 def bootstrap(env: Mapping[str, str]) -> tuple[Settings, object]:
-    """§4.2a: valida env → Client read + time-offset → test-call → (mainnet) guard
-    read-only (abort si la read key puede tradear)."""
-    settings = load_server_settings(env)
-    client = make_client(settings)
-    client.get_account()  # test-call firmado
-    if not settings.is_testnet:
-        assert_read_key_safe(perms_from_api(client.get_account_api_permissions()))
-    return settings, client
+    """§4.2a: bootstrap compartido (runtime) con read key + guard read-only."""
+    return runtime.bootstrap(env, load_settings=load_server_settings,
+                             assert_key_safe=assert_read_key_safe)
 
 
-def _make_estimator(client: object) -> MarketEstimator:
-    def get_filters(symbol: str) -> SymbolFilters:
-        return parse_symbol_filters(client.get_symbol_info(symbol))  # type: ignore[attr-defined]
-
-    def get_price(symbol: str) -> Decimal:
-        return Decimal(client.get_symbol_ticker(symbol=symbol)["price"])  # type: ignore[attr-defined]
-
-    return MarketEstimator(get_filters=get_filters, get_price=get_price)
+# Alias local para el wiring de tests (la implementación única vive en runtime).
+_make_estimator = runtime.make_estimator
 
 
 def _register_tools(client: object, ipc: IpcClient, market: MarketEstimator,
@@ -201,7 +186,7 @@ def _register_tools(client: object, ipc: IpcClient, market: MarketEstimator,
 
 def main() -> None:  # pragma: no cover — arranque puro (proceso real + mcp.run stdio)
     settings, client = bootstrap(os.environ)
-    ipc = IpcClient(SOCKET_PATH)
+    ipc = IpcClient(runtime.SOCKET_PATH)
     market = _make_estimator(client)
     _register_tools(client, ipc, market, is_testnet=settings.is_testnet)
     mcp.run(transport="stdio")

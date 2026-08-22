@@ -19,7 +19,7 @@ def _perms(*, withdrawals=False, futures=False, universal=False):
 def test_confirmer_bootstrap_ok_on_testnet_skips_guard():
     env = {"BINANCE_ENV": "testnet", "BINANCE_TRADE_API_KEY": "k",
            "BINANCE_TRADE_API_SECRET": "s"}
-    with patch("kainext_binance_mcp_confirmer.__main__.make_client") as mc:
+    with patch("kainext_binance_mcp.runtime.make_client") as mc:
         client = mc.return_value
         client.get_account.return_value = {"canTrade": True}
         settings, _ = confirmer.bootstrap(env)
@@ -31,7 +31,7 @@ def test_confirmer_bootstrap_ok_on_testnet_skips_guard():
 def test_confirmer_bootstrap_aborts_if_trade_key_can_withdraw():
     env = {"BINANCE_ENV": "mainnet", "BINANCE_TRADE_API_KEY": "k",
            "BINANCE_TRADE_API_SECRET": "s"}
-    with patch("kainext_binance_mcp_confirmer.__main__.make_client") as mc:
+    with patch("kainext_binance_mcp.runtime.make_client") as mc:
         client = mc.return_value
         client.get_account_api_permissions.return_value = _perms(withdrawals=True)
         with pytest.raises(GuardError):

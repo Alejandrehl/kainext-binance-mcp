@@ -3,7 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any, Callable, cast
 from binance.client import Client
-from kainext_binance_mcp.models import CancelResult, CanonicalOrder, OrderResult, ToolError, Fill
+from kainext_binance_mcp.models import NOT_CANCELABLE, CancelResult, CanonicalOrder, OrderResult, ToolError, Fill
 from kainext_binance_mcp.idempotency import derive_client_order_id, place_order_idempotent
 from kainext_binance_mcp.errors import client_secrets, map_binance_error, scrub_secrets
 from kainext_binance_mcp.intents import IntentStore
@@ -80,7 +80,7 @@ def handle_cancel_intent(*, symbol: str, order_id: int, env: str, intent_id: str
         _fail(store, intent_id, client, e)
         return
     status = current.get("status")
-    if status in _NOT_CANCELABLE:
+    if status in NOT_CANCELABLE:
         store.mark_failed(intent_id, ToolError(
             code=-2011, message=f"La orden {order_id} ya no es cancelable (estado {status})."))
         return
@@ -98,7 +98,6 @@ def handle_cancel_intent(*, symbol: str, order_id: int, env: str, intent_id: str
         _fail(store, intent_id, client, e)
 
 
-_NOT_CANCELABLE = {"FILLED", "CANCELED", "EXPIRED"}
 
 
 def _to_cancel_result(raw: dict[str, Any], env: str) -> CancelResult:

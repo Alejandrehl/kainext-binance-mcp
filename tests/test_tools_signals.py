@@ -15,6 +15,7 @@ import pandas as pd
 import pytest
 
 from kainext_binance_mcp.models import Signal, SentimentResult
+from kainext_binance_mcp.signals import common
 from kainext_binance_mcp.tools import signals as sig_tools
 
 
@@ -210,10 +211,10 @@ def test_base_asset_unknown_quote_returns_whole_symbol() -> None:
 
 def test_last_valid_all_nan_returns_default() -> None:
     s = pd.Series([float("nan"), float("nan")])
-    assert sig_tools._last_valid(s) == 0.0
-    assert sig_tools._last_valid(s, default=50.0) == 50.0
+    assert common.last_valid(s) == 0.0
+    assert common.last_valid(s, default=50.0) == 50.0
 
 
 def test_bb_position_collapsed_bands_is_neutral() -> None:
     # Bandas colapsadas (serie plana) → posición neutra 0.5.
-    assert sig_tools._bb_position(100.0, 100.0, 100.0) == 0.5
+    assert common.bb_position(100.0, 100.0, 100.0) == 0.5

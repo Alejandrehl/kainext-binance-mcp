@@ -5,11 +5,9 @@ from typing import Any, Protocol
 from kainext_binance_mcp.errors import client_secrets, map_binance_error, scrub_secrets
 from kainext_binance_mcp.ipc import IpcUnavailableError
 from kainext_binance_mcp.models import (
-    CanonicalOrder, Env, OrderProposal, OrderPreview, OrderStatus, OrderType,
-    Side, TimeInForce, ToolError,
+    NOT_CANCELABLE, CanonicalOrder, Env, OrderProposal, OrderPreview, OrderStatus,
+    OrderType, Side, TimeInForce, ToolError,
 )
-
-_NOT_CANCELABLE = {"FILLED", "CANCELED", "EXPIRED"}
 
 
 class IpcClient(Protocol):
@@ -53,7 +51,7 @@ def cancel_order_propose(*, ipc: Any, client: Any, symbol: str, order_id: int,
         code = int(code) if isinstance(code, int) else -1
         message = scrub_secrets(map_binance_error(code, str(msg)), client_secrets(client))
         return OrderProposal(error=ToolError(code=code, message=message))
-    if current.get("status") in _NOT_CANCELABLE:
+    if current.get("status") in NOT_CANCELABLE:
         return OrderProposal(error=ToolError(
             code=-2011,
             message=f"Order {order_id} is no longer cancelable (status {current.get('status')}).",

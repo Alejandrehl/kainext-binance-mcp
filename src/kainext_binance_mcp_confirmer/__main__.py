@@ -4,41 +4,27 @@ import os
 import secrets
 import threading
 import time
-from decimal import Decimal
 from typing import Mapping
 
-from kainext_binance_mcp.client import make_client
+from kainext_binance_mcp import runtime
 from kainext_binance_mcp.config import Settings, load_confirmer_settings
-from kainext_binance_mcp.guard import assert_trade_key_safe, perms_from_api
+from kainext_binance_mcp.guard import assert_trade_key_safe
 from kainext_binance_mcp.intents import IntentStore
 from kainext_binance_mcp.ipc import serve
-from kainext_binance_mcp.market import MarketEstimator, SymbolFilters, parse_symbol_filters
 
-SOCKET_PATH = os.path.expanduser(
-    "~/Library/Application Support/kainext-binance-mcp/confirmer.sock")
+SOCKET_PATH = runtime.SOCKET_PATH  # única definición (runtime); alias para tests/uso local
 AUDIT_PATH = os.path.expanduser(
     "~/Library/Application Support/kainext-binance-mcp/audit.log")
 
 
 def bootstrap(env: Mapping[str, str]) -> tuple[Settings, object]:
-    """§4.2b: valida env (mismo BINANCE_ENV) → Client trade + time-offset → test-call
-    → (mainnet) guard de la trade key (§4.4); abort si la key es insegura."""
-    settings = load_confirmer_settings(env)
-    client = make_client(settings)
-    client.get_account()  # test-call firmado
-    if not settings.is_testnet:
-        assert_trade_key_safe(perms_from_api(client.get_account_api_permissions()))
-    return settings, client
+    """§4.2b: bootstrap compartido (runtime) con trade key + guard §4.4."""
+    return runtime.bootstrap(env, load_settings=load_confirmer_settings,
+                             assert_key_safe=assert_trade_key_safe)
 
 
-def _make_estimator(client: object) -> MarketEstimator:
-    def get_filters(symbol: str) -> SymbolFilters:
-        return parse_symbol_filters(client.get_symbol_info(symbol))  # type: ignore[attr-defined]
-
-    def get_price(symbol: str) -> Decimal:
-        return Decimal(client.get_symbol_ticker(symbol=symbol)["price"])  # type: ignore[attr-defined]
-
-    return MarketEstimator(get_filters=get_filters, get_price=get_price)
+# Alias local para el wiring de tests (la implementación única vive en runtime).
+_make_estimator = runtime.make_estimator
 
 
 def main() -> None:  # pragma: no cover — arranque puro (proceso real + serve() bloqueante)

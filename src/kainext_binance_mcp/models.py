@@ -8,6 +8,10 @@ from pydantic import BaseModel, Field, model_validator
 # CanonicalOrder además es el trust boundary hacia AppleScript).
 SYMBOL_PATTERN = r"^[A-Z0-9]{2,20}$"
 
+# Estados terminales de una orden: proponer/ejecutar una cancelación sobre ellos es error.
+# Único home (lo comparten tools/write.py y el confirmador).
+NOT_CANCELABLE: frozenset[str] = frozenset({"FILLED", "CANCELED", "EXPIRED"})
+
 Side = Literal["BUY", "SELL"]
 OrderType = Literal["MARKET", "LIMIT"]
 Env = Literal["testnet", "mainnet"]
