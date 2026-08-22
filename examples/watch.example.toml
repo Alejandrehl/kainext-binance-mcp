@@ -1,0 +1,23 @@
+# kainext-binance-mcp-watch — example config.
+# Copy to ~/.config/kainext-binance-mcp/watch.toml and edit.
+# The watchdog NOTIFIES on threshold crossings. It holds NO keys and can execute NOTHING.
+
+interval_seconds = 300
+# webhook_url = "https://example.com/hook"   # optional: JSON POST per firing
+
+[[price]]
+symbol = "BTCUSDT"
+above = 98000        # e.g. a harvest-runbook pre-alert
+
+[[daily_close]]      # evaluated on the last COMPLETED daily candle (no intraday wicks)
+symbol = "BTCUSDT"
+above = 98000
+
+[[funding]]
+symbol = "BTCUSDT"
+abs_above = 0.0005   # crowded-leverage alert (|rate| per 8h window)
+
+[[fear_greed]]
+above = 85           # euphoria
+[[fear_greed]]
+below = 15           # capitulation

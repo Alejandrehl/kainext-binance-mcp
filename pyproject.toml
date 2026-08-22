@@ -36,6 +36,7 @@ Security = "https://github.com/Alejandrehl/kainext-binance-mcp/blob/main/SECURIT
 [project.scripts]
 kainext-binance-mcp = "kainext_binance_mcp.server:main"
 kainext-binance-mcp-confirmer = "kainext_binance_mcp_confirmer.__main__:main"
+kainext-binance-mcp-watch = "kainext_binance_mcp.watch:main"
 
 [build-system]
 requires = ["hatchling"]
