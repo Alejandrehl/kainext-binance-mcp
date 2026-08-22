@@ -51,7 +51,7 @@ a separate human-gated confirmer holding the trade key is the only thing that ca
   deduped; `signals/common.py` for shared indicator knobs/helpers (~130 duplicated lines removed).
 - Real ruff gate (`E,F,I,B,UP,SIM,BLE` + enforced line length) across `src/`, `tests/`,
   `examples/`; documented per-file-ignores. `ruff format` deliberately not adopted.
-- `python-binance` 1.0.36 → 1.0.37; **`mcp` 1.16.0 → 1.29.0** — `pip-audit` flagged three
+- `python-binance` 1.0.36 → 1.0.37; **`mcp` 1.16.0 → 1.29.0** (with `pydantic` 2.11.7 → 2.13.4, required by mcp's universal resolution) — `pip-audit` flagged three
   PYSEC advisories on 1.16.0 (PYSEC-2026-1617/3482/3483, all fixed by 1.28.1); staying on the
   1.x line. Migrating to MCP SDK 2.x is scheduled as its own release (see Roadmap).
 - Personal one-off scripts removed from the repository (moved to private storage); the public
