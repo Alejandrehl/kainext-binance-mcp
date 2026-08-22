@@ -8,7 +8,7 @@ import time
 from collections.abc import Mapping
 
 from kainext_binance_mcp import runtime
-from kainext_binance_mcp.config import Settings, load_confirmer_settings
+from kainext_binance_mcp.config import Settings, load_confirm_mode, load_confirmer_settings
 from kainext_binance_mcp.guard import assert_trade_key_safe
 from kainext_binance_mcp.intents import IntentStore
 from kainext_binance_mcp.ipc import serve
@@ -36,8 +36,10 @@ def main() -> None:  # pragma: no cover — arranque puro (proceso real + serve(
     estimator = _make_estimator(client)         # la trade key puede leer (filtros/precio)
     # C3: el confirmador conoce SU propio env; valida que el intent coincida antes de ejecutar.
     # A1: ruta del audit log de órdenes ejecutadas.
+    from kainext_binance_mcp_confirmer.confirm_backends import resolve_backend
+    backend = resolve_backend(load_confirm_mode(os.environ))
     serve(SOCKET_PATH, store, client, nonce, dialog_lock, estimator,
-          confirmer_env=settings.env, audit_path=AUDIT_PATH)
+          confirmer_env=settings.env, audit_path=AUDIT_PATH, confirm=backend)
 
 
 if __name__ == "__main__":  # pragma: no cover

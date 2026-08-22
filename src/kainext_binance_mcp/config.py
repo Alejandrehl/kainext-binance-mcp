@@ -50,3 +50,18 @@ def load_server_settings(values: Mapping[str, str]) -> Settings:
 
 def load_confirmer_settings(values: Mapping[str, str]) -> Settings:
     return _load_settings(values, "TRADE")
+
+
+_CONFIRM_MODES = ("auto", "macos", "web", "tty")
+
+
+def load_confirm_mode(values: Mapping[str, str]) -> str:
+    """Modo de confirmación del confirmador (v1.2): auto | macos | web | tty.
+
+    `auto` (default) = diálogo nativo en macOS, página web local en el resto.
+    Valor desconocido aborta al arranque (fail-closed, patrón BINANCE_ENV)."""
+    mode = values.get("BINANCE_CONFIRM_MODE", "auto").strip() or "auto"
+    if mode not in _CONFIRM_MODES:
+        raise ConfigError(
+            f"BINANCE_CONFIRM_MODE must be one of {_CONFIRM_MODES}, not '{mode}'")
+    return mode

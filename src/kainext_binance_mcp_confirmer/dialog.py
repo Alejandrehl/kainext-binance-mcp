@@ -5,8 +5,9 @@ from __future__ import annotations
 import subprocess
 
 from kainext_binance_mcp.models import CanonicalOrder, OrderPreview
-
-_DIALOG_TIMEOUT_S = 45  # < tool-call timeout del cliente (spec §2.1.9); para MARKET ver §4.8
+from kainext_binance_mcp_confirmer.confirm_backends import (
+    CONFIRM_TIMEOUT_S as _DIALOG_TIMEOUT_S,  # noqa: E501 — timeout único de confirmación (v1.2)
+)
 
 
 def render_dialog_text(order: CanonicalOrder, preview: OrderPreview) -> str:
