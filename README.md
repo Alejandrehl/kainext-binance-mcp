@@ -11,6 +11,12 @@
 > trades — while a separate, human-gated process is the only thing that can ever execute.
 > The model never holds a trade key, and nothing moves without a physical click.**
 
+<p align="center">
+  <img src="docs/assets/confirm-dialog.png" alt="The native macOS confirmation dialog: REAL MONEY (MAINNET) banner, exact order fields, Cancel as the default button" width="560">
+  <br>
+  <em>The gate. Every order renders exactly what will execute — and the default button is Cancel.</em>
+</p>
+
 `kainext-binance-mcp` is a [Model Context Protocol](https://modelcontextprotocol.io/) server
 that connects any MCP client (Claude Code, Claude Desktop, …) to a Binance **spot** account.
 It exposes **18 tools** spanning live market data, technical indicators, news & sentiment,
@@ -96,7 +102,7 @@ physical click. The model has neither. Defense in depth on top of that:
 
 | Tool | What it does | Params |
 |---|---|---|
-| `binance_get_klines` | OHLCV candles (Decimal) for a pair/interval | `symbol`, `interval`, `limit?` (≤1000) |
+| `binance_get_klines` | OHLCV candles (Decimal). `last_n` returns only the newest N to keep responses small | `symbol`, `interval`, `limit?` (≤1000), `last_n?` |
 | `binance_get_ticker_24h` | Rolling 24h stats (% change, high/low, volume) | `symbol` |
 | `binance_compute_indicators` | RSI / MACD / EMA / Bollinger / ATR. Returns only the latest value per series by default (`last_n=1`) to keep responses small; raise `last_n` for recent history | `symbol`, `interval`, `indicators`, `limit?`, `last_n?` |
 | `binance_backtest` | Lightweight, no-lookahead backtest of a simple rule | `symbol`, `interval`, `strategy` (`ema_cross`/`rsi_threshold`), `limit?` |
@@ -224,13 +230,16 @@ Requires Python 3.12+ and `uv`. See [CONTRIBUTING.md](CONTRIBUTING.md) for detai
 uv venv --python 3.12
 uv pip install -e ".[dev]"
 
-uv run ruff check src/     # lint
-uv run mypy                # strict type checking
-uv run pytest -q           # tests + coverage (gate: 90% min; currently ~99%)
+uv run ruff check src/ tests/ examples/   # lint (the release gate)
+uv run mypy                               # strict type checking
+uv run pytest -q                          # tests + coverage (hard gate: 90% min)
 ```
 
 The unit suite runs fully offline. Integration tests (`-m integration`) hit Binance testnet
-and skip cleanly without keys. CI runs lint + types + tests on every push and PR.
+and skip cleanly without keys; the news test hits live RSS only with `RUN_NETWORK_TESTS=1`.
+CI runs lint + types + tests on ubuntu **and** macOS (the confirmer's target OS) across
+Python 3.12/3.13, plus `pip-audit` and CodeQL, on every push and PR. `pre-commit install`
+gets you the same ruff check locally.
 
 ## Roadmap
 
