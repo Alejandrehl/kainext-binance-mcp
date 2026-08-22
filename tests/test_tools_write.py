@@ -76,3 +76,27 @@ def test_cancel_status_relays():
     from kainext_binance_mcp.tools.write import cancel_order_status
     out = cancel_order_status(ipc=ipc, intent_id="ic1")
     assert out.state == "pending"
+
+
+def test_propose_returns_tool_error_when_confirmer_down():
+    """Confirmador caído: la tool devuelve ToolError (mismo contrato que cancel), nunca
+    una excepción cruda al modelo."""
+    from decimal import Decimal
+    from unittest.mock import MagicMock
+    from kainext_binance_mcp.ipc import IpcUnavailableError
+    from kainext_binance_mcp.tools.write import cancel_order_propose, spot_order_propose
+
+    ipc = MagicMock()
+    ipc.register.side_effect = IpcUnavailableError("confirmer not running")
+    market = MagicMock()
+    prop = spot_order_propose(ipc=ipc, market=market, symbol="BTCUSDT", side="BUY",
+                              type="MARKET", env="testnet", quote_quantity=Decimal("10"))
+    assert prop.error is not None and prop.error.code == "ipc_unavailable"
+    assert prop.intent_id is None
+
+    ipc2 = MagicMock()
+    ipc2.register_cancel.side_effect = IpcUnavailableError("confirmer not running")
+    client = MagicMock(); client.get_order.return_value = {"status": "NEW"}
+    prop2 = cancel_order_propose(ipc=ipc2, client=client, symbol="BTCUSDT",
+                                 order_id=1, env="testnet")
+    assert prop2.error is not None and prop2.error.code == "ipc_unavailable"

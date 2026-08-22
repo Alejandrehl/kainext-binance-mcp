@@ -43,8 +43,14 @@ def parse_osascript_result(*, returncode: int, stdout: str) -> bool:
     return "button returned:Confirmar" in stdout
 
 
+def escape_applescript(text: str) -> str:
+    """Escape para literal de string AppleScript: backslash PRIMERO, luego comillas.
+    Único punto donde texto derivado del CanonicalOrder entra a un intérprete."""
+    return text.replace("\\", "\\\\").replace('"', '\\"')
+
+
 def ask_confirmation(text: str) -> bool:
-    safe = text.replace('"', "'")
+    safe = escape_applescript(text)
     script = (
         f'display dialog "{safe}" buttons {{"Cancelar","Confirmar"}} '
         f'default button "Cancelar" cancel button "Cancelar" '

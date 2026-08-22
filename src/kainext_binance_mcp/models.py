@@ -2,7 +2,7 @@
 from __future__ import annotations
 from decimal import Decimal
 from typing import Literal
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 Side = Literal["BUY", "SELL"]
 OrderType = Literal["MARKET", "LIMIT"]
@@ -13,7 +13,9 @@ TimeInForce = Literal["GTC", "IOC", "FOK"]
 class CanonicalOrder(BaseModel):
     """Lo ÚNICO que viaja por IPC al confirmador. Sin texto, sin id, sin hash."""
     model_config = {"frozen": True}
-    symbol: str
+    # Trust boundary: symbol es el único texto controlado por el modelo que llega a un
+    # intérprete (AppleScript, dialog.py). El pattern lo cierra acá, en el modelo canónico.
+    symbol: str = Field(pattern=r"^[A-Z0-9]{2,20}$")
     side: Side
     type: OrderType
     quantity: Decimal | None = None

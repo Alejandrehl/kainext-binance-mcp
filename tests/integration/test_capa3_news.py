@@ -12,13 +12,20 @@ Cómo correrlo (con red):
 """
 from __future__ import annotations
 
+import os
+
 import pytest
 
 from kainext_binance_mcp.models import NewsItem
 from kainext_binance_mcp.news.fetch import NewsCache, fetch_all
 from kainext_binance_mcp.news.sources import CoinDeskRSS, CryptoNewsRSS, NewsSource
 
-pytestmark = pytest.mark.integration
+pytestmark = [
+    pytest.mark.integration,
+    # Red real (RSS públicos): en CI no queremos depender del egress — opt-in explícito.
+    pytest.mark.skipif(os.environ.get("RUN_NETWORK_TESTS") != "1",
+                       reason="network test: set RUN_NETWORK_TESTS=1 to hit live RSS feeds"),
+]
 
 
 def _fetch_real(source: NewsSource) -> list[NewsItem]:

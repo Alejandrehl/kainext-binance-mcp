@@ -74,3 +74,18 @@ def test_cancel_result_status_constrained_and_status_round_trips():
                       env="testnet")
     st_order = OrderStatus(intent_id="i1", state="executed", result=orr.model_dump(mode="json"))
     assert isinstance(st_order.result, OrderResult) and st_order.result.status == "FILLED"
+
+
+def test_canonical_order_symbol_pattern():
+    """Trust boundary: symbol inválido no puede ni construirse (nunca llega a AppleScript)."""
+    from decimal import Decimal
+    import pytest
+    from pydantic import ValidationError
+    from kainext_binance_mcp.models import CanonicalOrder
+    ok = CanonicalOrder(symbol="BTCUSDT", side="BUY", type="MARKET",
+                        quote_quantity=Decimal("10"), env="testnet")
+    assert ok.symbol == "BTCUSDT"
+    for bad in ('BTC"USDT', "btcusdt", "BTC USDT", "B", "X" * 21, 'A\\"; do shell script "x"'):
+        with pytest.raises(ValidationError):
+            CanonicalOrder(symbol=bad, side="BUY", type="MARKET",
+                           quote_quantity=Decimal("10"), env="testnet")

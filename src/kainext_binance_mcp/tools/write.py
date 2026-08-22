@@ -3,6 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any, Protocol
 from kainext_binance_mcp.errors import map_binance_error, scrub_secrets
+from kainext_binance_mcp.ipc import IpcUnavailableError
 from kainext_binance_mcp.models import (
     CanonicalOrder, Env, OrderProposal, OrderPreview, OrderStatus, OrderType,
     Side, TimeInForce, ToolError,
@@ -34,7 +35,11 @@ def spot_order_propose(*, ipc: IpcClient, market: Any, symbol: str, side: Side, 
                            quote_quantity=quote_quantity, price=price,
                            time_in_force=time_in_force, env=env)
     estimate: OrderPreview = market.estimate(order)  # pre-validación local (fail-fast, no autoritativa)
-    intent_id, expires_at = ipc.register(order)
+    try:
+        intent_id, expires_at = ipc.register(order)
+    except IpcUnavailableError as e:
+        # Mismo contrato que cancel_order_propose: ToolError, nunca una excepción cruda al modelo.
+        return OrderProposal(error=ToolError(code="ipc_unavailable", message=str(e)))
     return OrderProposal(intent_id=intent_id, expires_at=expires_at, server_estimate=estimate)
 
 
@@ -61,7 +66,10 @@ def cancel_order_propose(*, ipc: Any, client: Any, symbol: str, order_id: int,
             code=-2011,
             message=f"La orden {order_id} ya no es cancelable (estado {current.get('status')}).",
         ))
-    intent_id, expires_at = ipc.register_cancel(symbol=symbol, order_id=order_id, env=env)
+    try:
+        intent_id, expires_at = ipc.register_cancel(symbol=symbol, order_id=order_id, env=env)
+    except IpcUnavailableError as e:
+        return OrderProposal(error=ToolError(code="ipc_unavailable", message=str(e)))
     return OrderProposal(intent_id=intent_id, expires_at=expires_at)
 
 

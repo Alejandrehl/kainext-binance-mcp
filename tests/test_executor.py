@@ -237,3 +237,15 @@ def test_cancel_failure_after_confirm_is_sanitized():
     store.mark_executed.assert_not_called()
     store.mark_failed.assert_called_once()
     assert store.mark_failed.call_args.args[1].code == -2011
+
+
+def test_estimate_failure_marks_failed_not_pending():
+    """Si la re-estimación autoritativa falla (red/símbolo), el intent queda FAILED al tiro
+    — antes la excepción mataba el hilo y el intent quedaba pending hasta el TTL (300s)."""
+    client = MagicMock(); store = MagicMock(); est = MagicMock()
+    est.estimate.side_effect = RuntimeError("network down")
+    handle_intent(order=_order(), intent_id="i9", store=store, client=client,
+                  estimator=est, confirm=lambda text: True, nonce="n")
+    client.create_order.assert_not_called()
+    store.mark_failed.assert_called_once()
+    assert store.mark_failed.call_args.args[0] == "i9"

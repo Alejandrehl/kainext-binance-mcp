@@ -39,7 +39,11 @@ def handle_intent(*, order: CanonicalOrder, intent_id: str, store: IntentStore,
             message=(f"env del intent ({order.env}) no coincide con el del confirmador "
                      f"({confirmer_env}); no se muestra diálogo ni se ejecuta")))
         return
-    preview = estimator.estimate(order)          # AUTORITATIVO: el confirmador re-valida
+    try:
+        preview = estimator.estimate(order)      # AUTORITATIVO: el confirmador re-valida
+    except Exception as e:  # noqa: BLE001 — si la estimación falla (red/símbolo), el intent
+        _fail(store, intent_id, client, e)       # debe quedar failed, no pending hasta el TTL
+        return
     if not preview.feasible:
         store.mark_failed(intent_id, ToolError(code="infeasible", message=preview.reason or "no ejecutable"))
         return

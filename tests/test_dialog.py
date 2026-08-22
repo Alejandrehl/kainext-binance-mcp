@@ -1,6 +1,7 @@
 from decimal import Decimal
 from kainext_binance_mcp.models import CanonicalOrder, OrderPreview
-from kainext_binance_mcp_confirmer.dialog import render_dialog_text, parse_osascript_result
+from kainext_binance_mcp_confirmer.dialog import (escape_applescript, parse_osascript_result,
+                                                  render_dialog_text)
 
 def test_render_shows_env_and_effective_values():
     o = CanonicalOrder(symbol="BTCUSDT", side="BUY", type="MARKET",
@@ -24,3 +25,10 @@ def test_parse_real_osascript_formats_with_giving_up():
     assert parse_osascript_result(returncode=0, stdout="gave up:true\n") is False
     # Cancelar/Esc con cancel button => exit != 0 (User canceled -128).
     assert parse_osascript_result(returncode=1, stdout="") is False
+
+
+def test_escape_applescript_backslash_then_quote():
+    # backslash primero (si no, re-escaparia las comillas ya escapadas)
+    assert escape_applescript('say "hi"') == 'say \\"hi\\"'
+    assert escape_applescript("back\\slash") == "back\\\\slash"
+    assert escape_applescript('mix\\"end') == 'mix\\\\\\"end'
