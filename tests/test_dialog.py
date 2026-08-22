@@ -1,7 +1,12 @@
 from decimal import Decimal
+
 from kainext_binance_mcp.models import CanonicalOrder, OrderPreview
-from kainext_binance_mcp_confirmer.dialog import (escape_applescript, parse_osascript_result,
-                                                  render_dialog_text)
+from kainext_binance_mcp_confirmer.dialog import (
+    escape_applescript,
+    parse_osascript_result,
+    render_dialog_text,
+)
+
 
 def test_render_shows_env_and_effective_values():
     o = CanonicalOrder(symbol="BTCUSDT", side="BUY", type="MARKET",

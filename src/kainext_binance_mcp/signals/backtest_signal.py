@@ -19,8 +19,8 @@ vela (no tenemos archivo de noticias minuto a minuto), así que el backtest corr
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
 from decimal import Decimal
-from typing import Mapping
 
 import pandas as pd
 
@@ -76,7 +76,8 @@ def signal_positions(
     positions: list[int] = []
     for i in range(n):
         price_f = float(close.iloc[i])
-        bb_pos = common.bb_position(price_f, common.value_at(lower, i, price_f), common.value_at(upper, i, price_f))
+        bb_pos = common.bb_position(price_f, common.value_at(lower, i, price_f),
+                                    common.value_at(upper, i, price_f))
         signal = engine.generate_signal(
             symbol="",
             interval="",

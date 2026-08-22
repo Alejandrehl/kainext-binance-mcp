@@ -1,7 +1,10 @@
 from decimal import Decimal
+
 import pytest
+
+from kainext_binance_mcp.intents import IntentStateError, IntentStore
 from kainext_binance_mcp.models import CanonicalOrder, OrderResult
-from kainext_binance_mcp.intents import IntentStore, IntentStateError
+
 
 def _order():
     return CanonicalOrder(symbol="BTCUSDT", side="BUY", type="MARKET",

@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from kainext_binance_mcp.news.sentiment import detect_assets, score_text
 
-
 # --- score_text: rango y signo ---
 
 def test_score_text_bullish_is_positive() -> None:

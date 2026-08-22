@@ -1,7 +1,9 @@
 """Diálogo nativo macOS. El TEXTO se renderiza desde el CanonicalOrder que se ejecuta
 (spec §4.3): el humano ve exactamente lo que se ejecuta. NUNCA texto provisto por el server."""
 from __future__ import annotations
+
 import subprocess
+
 from kainext_binance_mcp.models import CanonicalOrder, OrderPreview
 
 _DIALOG_TIMEOUT_S = 45  # < tool-call timeout del cliente (spec §2.1.9); para MARKET ver §4.8
@@ -17,7 +19,8 @@ def render_dialog_text(order: CanonicalOrder, preview: OrderPreview) -> str:
     if order.price is not None:
         lines.append(f"Price: {preview.price}  ({order.time_in_force})")
     if order.type == "MARKET":
-        lines.append("(MARKET: quantity/cost are estimates; you approve the QUANTITY, not the cost)")
+        lines.append(
+            "(MARKET: quantity/cost are estimates; you approve the QUANTITY, not the cost)")
     lines.append(f"Estimated notional: {preview.est_notional}")
     return "\n".join(lines)
 

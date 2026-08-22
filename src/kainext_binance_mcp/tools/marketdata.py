@@ -34,7 +34,7 @@ VALID_INDICATORS: frozenset[str] = frozenset(
 
 
 def get_klines(
-    client: "Client", symbol: str, interval: str, limit: int = 500,
+    client: Client, symbol: str, interval: str, limit: int = 500,
     last_n: int | None = None,
 ) -> list[Kline]:
     """Velas OHLCV de un par/intervalo como modelos ``Kline`` (OHLCV en Decimal).
@@ -48,7 +48,7 @@ def get_klines(
     return models[-last_n:] if last_n is not None else models
 
 
-def get_ticker_24h(client: "Client", symbol: str) -> Ticker24h:
+def get_ticker_24h(client: Client, symbol: str) -> Ticker24h:
     """Stats rolling 24h de un par (cambio %, high/low, volumen, último precio)."""
     t = client.get_ticker(symbol=validate_symbol(symbol))
     return Ticker24h(
@@ -67,7 +67,7 @@ def _series_to_list(s: pd.Series) -> list[float | None]:
 
 
 def compute_indicators(
-    client: "Client",
+    client: Client,
     symbol: str,
     interval: str,
     indicators: list[str],
@@ -143,7 +143,7 @@ def compute_indicators(
 
 
 def backtest(
-    client: "Client",
+    client: Client,
     symbol: str,
     interval: str,
     strategy: str,

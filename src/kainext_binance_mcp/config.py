@@ -1,7 +1,8 @@
 """Validación de variables de entorno del server (read key). Spec §4.1/§4.2a."""
 from __future__ import annotations
+
+from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Mapping
 
 
 class ConfigError(Exception):

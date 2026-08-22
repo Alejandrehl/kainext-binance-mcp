@@ -1,12 +1,24 @@
 """Ejecución autoritativa en el confirmador (spec §4.3/§4.6). Sólo corre tras el clic."""
 from __future__ import annotations
+
+import contextlib
+from collections.abc import Callable
 from decimal import Decimal
-from typing import Any, Callable, cast
+from typing import Any, cast
+
 from binance.client import Client
-from kainext_binance_mcp.models import NOT_CANCELABLE, CancelResult, CanonicalOrder, OrderResult, ToolError, Fill
-from kainext_binance_mcp.idempotency import derive_client_order_id, place_order_idempotent
+
 from kainext_binance_mcp.errors import client_secrets, map_binance_error, scrub_secrets
+from kainext_binance_mcp.idempotency import derive_client_order_id, place_order_idempotent
 from kainext_binance_mcp.intents import IntentStore
+from kainext_binance_mcp.models import (
+    NOT_CANCELABLE,
+    CancelResult,
+    CanonicalOrder,
+    Fill,
+    OrderResult,
+    ToolError,
+)
 
 
 def _fail(store: IntentStore, intent_id: str, client: Client, e: Exception) -> None:
@@ -37,7 +49,8 @@ def handle_intent(*, order: CanonicalOrder, intent_id: str, store: IntentStore,
         _fail(store, intent_id, client, e)       # debe quedar failed, no pending hasta el TTL
         return
     if not preview.feasible:
-        store.mark_failed(intent_id, ToolError(code="infeasible", message=preview.reason or "not executable"))
+        store.mark_failed(intent_id, ToolError(
+            code="infeasible", message=preview.reason or "not executable"))
         return
     if not confirm(render_dialog_text(order, preview)):
         store.mark_rejected(intent_id)
@@ -84,7 +97,8 @@ def handle_cancel_intent(*, symbol: str, order_id: int, env: str, intent_id: str
         store.mark_failed(intent_id, ToolError(
             code=-2011, message=f"La orden {order_id} ya no es cancelable (estado {status})."))
         return
-    if not confirm(render_cancel_dialog_text(symbol=symbol, order_id=order_id, env=env, status=status)):
+    if not confirm(render_cancel_dialog_text(symbol=symbol, order_id=order_id, env=env,
+                                              status=status)):
         store.mark_rejected(intent_id)
         return
     store.mark_approved(intent_id)
@@ -150,17 +164,18 @@ def _audit_order(audit_path: str, intent_id: str, order: CanonicalOrder,
                  result: OrderResult, preview: Any) -> None:
     """A1: appendea la orden ejecutada al audit log (best-effort; nunca tumba la ejecución
     ni filtra secretos). `effective_qty` = cantidad ORDENADA (lo que se colocó, redondeado);
-    `executed_qty` = lo llenado hasta ahora (0 si la LIMIT quedó resting); `price` = el de la orden."""
+    `executed_qty` = lo llenado hasta ahora (0 si la LIMIT quedó resting);
+    `price` = el de la orden."""
     from kainext_binance_mcp_confirmer.audit import append_audit_entry
-    try:
+
+    # El audit es best-effort: NUNCA debe romper el flujo de ejecución.
+    with contextlib.suppress(Exception):
         append_audit_entry(
             path=audit_path, intent_id=intent_id, action="ORDER",
             client_order_id=result.client_order_id, order_id=result.order_id,
             symbol=order.symbol, side=order.side,
             effective_qty=preview.effective_qty, executed_qty=result.executed_qty,
             price=order.price, env=result.env)
-    except Exception:  # noqa: BLE001 — el audit nunca debe romper el flujo de ejecución
-        pass
 
 
 def _audit_cancel(audit_path: str, intent_id: str, symbol: str,
@@ -168,13 +183,13 @@ def _audit_cancel(audit_path: str, intent_id: str, symbol: str,
     """A1: appendea la cancelación ejecutada al audit log (best-effort; nunca tumba el flujo
     ni filtra secretos). Una cancelación no tiene side/qty/price → van None; action='CANCEL'."""
     from kainext_binance_mcp_confirmer.audit import append_audit_entry
-    try:
+
+    # El audit es best-effort: NUNCA debe romper el flujo de ejecución.
+    with contextlib.suppress(Exception):
         append_audit_entry(
             path=audit_path, intent_id=intent_id, action="CANCEL",
             client_order_id="", order_id=result.order_id,
             symbol=symbol, side="", effective_qty=None, price=None, env=result.env)
-    except Exception:  # noqa: BLE001 — el audit nunca debe romper el flujo de cancelación
-        pass
 
 
 def _extract(e: Exception) -> tuple[int, str]:

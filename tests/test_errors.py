@@ -1,5 +1,6 @@
 from kainext_binance_mcp.errors import map_binance_error, scrub_secrets
 
+
 def test_maps_known_codes():
     assert "insufficient funds" in map_binance_error(-2010, "Account has insufficient balance").lower()
     assert "filter" in map_binance_error(-1013, "Filter failure: LOT_SIZE").lower()
@@ -19,6 +20,7 @@ def test_run_guarded_maps_and_scrubs():
     """Contrato de error único: excepción de python-binance sale como ToolExecutionError
     con mensaje mapeado y sin secretos."""
     import pytest
+
     from kainext_binance_mcp.errors import ToolExecutionError, run_guarded
 
     class FakeBinanceError(Exception):
@@ -37,6 +39,7 @@ def test_run_guarded_maps_and_scrubs():
 
 def test_run_guarded_valueerror_keeps_message():
     import pytest
+
     from kainext_binance_mcp.errors import ToolExecutionError, run_guarded
 
     def bad():
@@ -54,6 +57,7 @@ def test_run_guarded_returns_value():
 def test_strategy_literal_matches_backtest_strategies():
     """server.Strategy (Literal, viaja al schema) debe calzar con backtest.STRATEGIES."""
     from typing import get_args
+
     from kainext_binance_mcp import backtest as bt
     from kainext_binance_mcp.server import Strategy
     assert set(get_args(Strategy)) == set(bt.STRATEGIES)

@@ -1,7 +1,10 @@
-import pytest
 from decimal import Decimal
+
+import pytest
+
+from kainext_binance_mcp.ipc import IpcProtocolError, decode_msg, encode_msg
 from kainext_binance_mcp.models import CanonicalOrder
-from kainext_binance_mcp.ipc import encode_msg, decode_msg, IpcProtocolError
+
 
 def test_register_roundtrip():
     o = CanonicalOrder(symbol="BTCUSDT", side="BUY", type="MARKET",

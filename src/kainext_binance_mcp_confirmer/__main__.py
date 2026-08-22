@@ -1,10 +1,11 @@
 """Confirmador (spec §4.2b/§4.3). Trade key. Único que ejecuta, sólo tras el clic."""
 from __future__ import annotations
+
 import os
 import secrets
 import threading
 import time
-from typing import Mapping
+from collections.abc import Mapping
 
 from kainext_binance_mcp import runtime
 from kainext_binance_mcp.config import Settings, load_confirmer_settings

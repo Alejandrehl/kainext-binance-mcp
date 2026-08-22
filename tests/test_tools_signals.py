@@ -14,7 +14,7 @@ from unittest.mock import MagicMock
 import pandas as pd
 import pytest
 
-from kainext_binance_mcp.models import Signal, SentimentResult
+from kainext_binance_mcp.models import SentimentResult, Signal
 from kainext_binance_mcp.signals import common
 from kainext_binance_mcp.tools import signals as sig_tools
 

@@ -1,6 +1,7 @@
 from decimal import Decimal
-from kainext_binance_mcp.models import CanonicalOrder
+
 from kainext_binance_mcp.market import MarketEstimator
+from kainext_binance_mcp.models import CanonicalOrder
 
 
 def _est(filters_btcusdt):

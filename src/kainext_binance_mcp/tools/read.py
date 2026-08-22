@@ -1,10 +1,13 @@
 """Tools de lectura spot (read key). Spec §3.1."""
 from __future__ import annotations
+
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
+
 from binance.client import Client
-from kainext_binance_mcp.models import AssetBalance, OpenOrder, PriceTicker, validate_symbol
+
 from kainext_binance_mcp.guard import perms_from_api
+from kainext_binance_mcp.models import AssetBalance, OpenOrder, PriceTicker, validate_symbol
 
 if TYPE_CHECKING:
     from kainext_binance_mcp.models import AccountInfo
@@ -35,7 +38,8 @@ def _to_open_order(o: dict[str, Any]) -> OpenOrder:
 
 
 def get_open_orders(client: Client, symbol: str | None = None) -> list[OpenOrder]:
-    raw = client.get_open_orders(symbol=validate_symbol(symbol)) if symbol else client.get_open_orders()
+    raw = (client.get_open_orders(symbol=validate_symbol(symbol)) if symbol
+           else client.get_open_orders())
     return [_to_open_order(o) for o in raw]
 
 
@@ -46,7 +50,7 @@ def get_order_history(client: Client, symbol: str, limit: int = 50) -> list[Open
     return [_to_open_order(o) for o in raw]
 
 
-def get_account_info(client: Client, *, is_testnet: bool) -> "AccountInfo":
+def get_account_info(client: Client, *, is_testnet: bool) -> AccountInfo:
     from kainext_binance_mcp.models import AccountInfo
     acct = client.get_account()
     rates = {k: Decimal(v) for k, v in acct.get("commissionRates", {}).items()}

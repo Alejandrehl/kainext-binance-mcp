@@ -1,7 +1,10 @@
 from decimal import Decimal
+
 from requests.exceptions import ConnectionError as ReqConnError
-from kainext_binance_mcp.models import CanonicalOrder
+
 from kainext_binance_mcp.idempotency import derive_client_order_id, place_order_idempotent
+from kainext_binance_mcp.models import CanonicalOrder
+
 
 def _order():
     return CanonicalOrder(symbol="BTCUSDT", side="BUY", type="LIMIT",

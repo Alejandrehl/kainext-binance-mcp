@@ -7,6 +7,7 @@ Levantamos `serve` en un hilo con un store real, client/estimator mock y un
 - IpcClient ante socket inexistente lanza IpcUnavailableError.
 """
 from __future__ import annotations
+
 import os
 import socket
 import tempfile

@@ -1,10 +1,12 @@
 """Intents y su máquina de estados (spec §4.3b). Estado en memoria del confirmador."""
 from __future__ import annotations
+
 import threading
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
-from kainext_binance_mcp.models import CanonicalOrder, CancelResult, OrderResult, ToolError
+
+from kainext_binance_mcp.models import CancelResult, CanonicalOrder, OrderResult, ToolError
 
 _TERMINAL = {"executed", "rejected", "expired", "failed"}
 

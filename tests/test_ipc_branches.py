@@ -5,6 +5,7 @@ re-uso de socket pre-existente), errores de decode/_request del cliente, _read_l
 conexión cerrada, mensaje malformado que rompe _handle (envelope de error, NO se actúa),
 y cierre limpio del servidor (unlink del socket)."""
 from __future__ import annotations
+
 import json
 import os
 import socket
@@ -18,11 +19,15 @@ import pytest
 
 from kainext_binance_mcp.intents import IntentStore
 from kainext_binance_mcp.ipc import (
-    IpcClient, IpcProtocolError, IpcUnavailableError, _read_line, decode_msg,
-    encode_msg, serve,
+    IpcClient,
+    IpcProtocolError,
+    IpcUnavailableError,
+    _read_line,
+    decode_msg,
+    encode_msg,
+    serve,
 )
 from kainext_binance_mcp.models import CanonicalOrder, OrderPreview
-
 
 # --- decode_msg / _read_line: ramas unitarias --------------------------------
 

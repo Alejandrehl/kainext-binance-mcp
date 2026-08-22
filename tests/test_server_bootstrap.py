@@ -1,6 +1,9 @@
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import MagicMock, patch
+
 from kainext_binance_mcp.guard import GuardError
+
 
 def test_server_bootstrap_aborts_if_read_key_has_trade(monkeypatch):
     env = {"BINANCE_ENV": "mainnet", "BINANCE_READ_API_KEY": "k", "BINANCE_READ_API_SECRET": "s"}

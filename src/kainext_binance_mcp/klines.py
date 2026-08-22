@@ -32,7 +32,7 @@ _COLUMNS = ["open_time", "open", "high", "low", "close", "volume", "close_time"]
 
 
 def fetch_klines(
-    client: "Client", symbol: str, interval: str, limit: int = 500
+    client: Client, symbol: str, interval: str, limit: int = 500
 ) -> pd.DataFrame:
     """Trae velas OHLCV y las devuelve como DataFrame con columnas estandarizadas.
 

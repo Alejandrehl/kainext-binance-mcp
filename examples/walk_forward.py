@@ -46,7 +46,6 @@ from itertools import product
 
 import numpy as np
 import pandas as pd
-
 from binance.client import Client
 
 from kainext_binance_mcp import indicators

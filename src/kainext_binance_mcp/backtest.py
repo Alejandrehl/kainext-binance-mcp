@@ -30,8 +30,8 @@ Métricas (todas ``float``; los indicadores/retornos son analíticos, no montos 
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 import pandas as pd
 
@@ -216,7 +216,8 @@ def backtest_df(
             win_rate=0.0, max_drawdown_pct=0.0, disclaimer=DISCLAIMER,
         )
 
-    signal = _signal_override if _signal_override is not None else STRATEGIES[strategy](df, **params)
+    signal = (_signal_override if _signal_override is not None
+              else STRATEGIES[strategy](df, **params))
     trades, equity_curve = simulate(df, signal, commission=commission)
 
     total_return_pct = (equity_curve[-1] - 1.0) * 100.0

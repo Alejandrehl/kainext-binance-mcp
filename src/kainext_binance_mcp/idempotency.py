@@ -1,8 +1,13 @@
 """Idempotencia de órdenes (spec §4.5). El id lo deriva el CONFIRMADOR."""
 from __future__ import annotations
+
 import hashlib
-from typing import Any, Callable
-from requests.exceptions import ConnectionError as ReqConnError, Timeout as ReqTimeout
+from collections.abc import Callable
+from typing import Any
+
+from requests.exceptions import ConnectionError as ReqConnError
+from requests.exceptions import Timeout as ReqTimeout
+
 from kainext_binance_mcp.models import CanonicalOrder
 
 # C1: python-binance corre sobre `requests`; un timeout/caída de red real lanza

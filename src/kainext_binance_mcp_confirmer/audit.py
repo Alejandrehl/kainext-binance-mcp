@@ -6,9 +6,10 @@ carpeta 0700). Registra QUÉ se ejecutó —timestamp, ids, símbolo, lado, cant
 efectiva, precio, env— y NUNCA secretos (ni API key/secret, ni nonce).
 """
 from __future__ import annotations
+
 import json
 import os
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
@@ -43,7 +44,7 @@ def append_audit_entry(
     if directory:
         os.makedirs(directory, mode=0o700, exist_ok=True)
     entry = {
-        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "timestamp": datetime.now(UTC).isoformat(),
         "intent_id": intent_id,
         "action": action,
         "client_order_id": client_order_id,

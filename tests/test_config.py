@@ -1,6 +1,9 @@
 import pytest
+
 from kainext_binance_mcp.config import (
-    ConfigError, load_confirmer_settings, load_server_settings,
+    ConfigError,
+    load_confirmer_settings,
+    load_server_settings,
 )
 
 BASE = {"BINANCE_ENV": "testnet", "BINANCE_READ_API_KEY": "k", "BINANCE_READ_API_SECRET": "s"}

@@ -12,6 +12,7 @@ Respuestas:
   error    → {"error": "<motivo>"}  (también ante type desconocido: NO se actúa)
 """
 from __future__ import annotations
+
 import json
 import os
 import socket
@@ -116,7 +117,7 @@ class IpcClient:
 
 
 def serve(socket_path: str, store: Any, client: Any, nonce: str,
-          dialog_lock: "threading.Lock", estimator: Any,
+          dialog_lock: threading.Lock, estimator: Any,
           *, max_pending: int = _MAX_PENDING, confirmer_env: str = "testnet",
           audit_path: str | None = None) -> None:
     """Servidor IPC (lo corre el confirmador). Crea el Unix socket (carpeta 0700,
@@ -125,7 +126,7 @@ def serve(socket_path: str, store: Any, client: Any, nonce: str,
     # Import diferido para no acoplar el server (read-only) al confirmador.
     from kainext_binance_mcp.models import CanonicalOrder
     from kainext_binance_mcp_confirmer.dialog import ask_confirmation
-    from kainext_binance_mcp_confirmer.executor import handle_intent, handle_cancel_intent
+    from kainext_binance_mcp_confirmer.executor import handle_cancel_intent, handle_intent
 
     directory = os.path.dirname(socket_path)
     os.makedirs(directory, mode=0o700, exist_ok=True)

@@ -1,10 +1,13 @@
 import json
 from decimal import Decimal
 from unittest.mock import MagicMock
+
 from binance.client import Client
 from binance.exceptions import BinanceAPIException
+
 from kainext_binance_mcp.models import CanonicalOrder
-from kainext_binance_mcp_confirmer.executor import handle_intent, handle_cancel_intent
+from kainext_binance_mcp_confirmer.executor import handle_cancel_intent, handle_intent
+
 
 def _order():
     return CanonicalOrder(symbol="BTCUSDT", side="BUY", type="MARKET",

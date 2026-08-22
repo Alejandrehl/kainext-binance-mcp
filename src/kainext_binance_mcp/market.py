@@ -1,8 +1,11 @@
 """Filtros de símbolo y redondeo Decimal a tick/step (spec §2.1.3/§4.6)."""
 from __future__ import annotations
+
+from collections.abc import Callable
 from dataclasses import dataclass
-from decimal import Decimal, ROUND_DOWN
-from typing import Any, Callable
+from decimal import ROUND_DOWN, Decimal
+from typing import Any
+
 from kainext_binance_mcp.models import CanonicalOrder, OrderPreview
 
 

@@ -1,6 +1,7 @@
 from decimal import Decimal
 from unittest.mock import MagicMock
-from kainext_binance_mcp.tools.read import get_balance, get_price, get_open_orders
+
+from kainext_binance_mcp.tools.read import get_balance, get_open_orders, get_price
 
 
 def test_get_balance_filters_nonzero_and_uses_decimal():
@@ -39,8 +40,10 @@ def test_get_account_info_testnet_omits_key_perms():
 
 
 def test_read_tools_validate_symbol_and_limit():
-    import pytest
     from unittest.mock import MagicMock
+
+    import pytest
+
     from kainext_binance_mcp.tools.read import get_order_history, get_price
 
     client = MagicMock()

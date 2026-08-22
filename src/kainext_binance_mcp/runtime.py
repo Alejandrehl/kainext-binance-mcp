@@ -2,6 +2,7 @@
 trade-key). Antes vivían duplicadas en server.py y confirmer/__main__.py con un
 comentario "deben coincidir" — ahora coinciden por construcción."""
 from __future__ import annotations
+
 import os
 from collections.abc import Callable, Mapping
 from decimal import Decimal

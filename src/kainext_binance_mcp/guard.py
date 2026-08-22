@@ -1,6 +1,8 @@
 """Guards de permisos de API key vía apiRestrictions (spec §4.4)."""
 from __future__ import annotations
+
 from typing import Any
+
 from kainext_binance_mcp.models import KeyPermissions
 
 

@@ -5,7 +5,7 @@ Confirma o refuta la tesis 'el pico ya pasó, estamos en bear' con precios, no o
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from binance.client import Client
 
@@ -15,7 +15,7 @@ PAIRS = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "LINKUSDT"]
 
 
 def _d(ms: int) -> str:
-    return datetime.fromtimestamp(ms / 1000, tz=timezone.utc).strftime("%d-%m-%Y")
+    return datetime.fromtimestamp(ms / 1000, tz=UTC).strftime("%d-%m-%Y")
 
 
 def main() -> None:

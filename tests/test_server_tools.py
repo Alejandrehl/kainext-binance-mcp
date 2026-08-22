@@ -5,6 +5,7 @@ Cada @mcp.tool() delega en funciones ya testeadas; acá verificamos que el cable
 subyacente (`.fn`) que FastMCP registró. El server NUNCA ejecuta: las write delegan
 en el confirmador vía ipc."""
 from __future__ import annotations
+
 from decimal import Decimal
 from unittest.mock import MagicMock
 
@@ -116,7 +117,10 @@ def test_capa2_marketdata_tools_delegate_to_client():
     tm = _register(client, MagicMock(), MagicMock(), is_testnet=True)
 
     from kainext_binance_mcp.models import (
-        BacktestResult, IndicatorResult, Kline, Ticker24h,
+        BacktestResult,
+        IndicatorResult,
+        Kline,
+        Ticker24h,
     )
 
     klines = _fn(tm, "binance_get_klines")("BTCUSDT", "1h", 40)

@@ -1,12 +1,22 @@
 """Tools de escritura (lado server): proponen y consultan. NUNCA ejecutan (spec §3.2)."""
 from __future__ import annotations
+
 from decimal import Decimal
 from typing import Any, Protocol
+
 from kainext_binance_mcp.errors import client_secrets, map_binance_error, scrub_secrets
 from kainext_binance_mcp.ipc import IpcUnavailableError
 from kainext_binance_mcp.models import (
-    NOT_CANCELABLE, CanonicalOrder, Env, OrderProposal, OrderPreview, OrderStatus,
-    OrderType, Side, TimeInForce, ToolError,
+    NOT_CANCELABLE,
+    CanonicalOrder,
+    Env,
+    OrderPreview,
+    OrderProposal,
+    OrderStatus,
+    OrderType,
+    Side,
+    TimeInForce,
+    ToolError,
 )
 
 
@@ -24,7 +34,8 @@ def spot_order_propose(*, ipc: IpcClient, market: Any, symbol: str, side: Side, 
     order = CanonicalOrder(symbol=symbol, side=side, type=type, quantity=quantity,
                            quote_quantity=quote_quantity, price=price,
                            time_in_force=time_in_force, env=env)
-    estimate: OrderPreview = market.estimate(order)  # pre-validación local (fail-fast, no autoritativa)
+    # Pre-validación local (fail-fast); NO autoritativa — el confirmador re-estima.
+    estimate: OrderPreview = market.estimate(order)
     try:
         intent_id, expires_at = ipc.register(order)
     except IpcUnavailableError as e:

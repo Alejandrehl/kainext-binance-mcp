@@ -1,8 +1,14 @@
 from decimal import Decimal
+
 from kainext_binance_mcp.market import (
-    MarketEstimator, parse_symbol_filters, round_to_step, round_to_tick, validate_notional,
+    MarketEstimator,
+    parse_symbol_filters,
+    round_to_step,
+    round_to_tick,
+    validate_notional,
 )
 from kainext_binance_mcp.models import CanonicalOrder
+
 
 def test_round_qty_floor_to_step():
     assert round_to_step(Decimal("0.123456"), Decimal("0.00001")) == Decimal("0.12345")

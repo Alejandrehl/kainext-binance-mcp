@@ -1,22 +1,37 @@
 """MCP server (spec §4.2a). Read key. Propone al confirmador; NUNCA ejecuta."""
 from __future__ import annotations
+
 import os
+from collections.abc import Callable, Mapping
 from decimal import Decimal
-from typing import Literal, Mapping, TypeVar
-from collections.abc import Callable
+from typing import Literal, TypeVar
 
 from mcp.server.fastmcp import FastMCP
 
 from kainext_binance_mcp import runtime
-from kainext_binance_mcp.errors import client_secrets, run_guarded
 from kainext_binance_mcp.config import Settings, load_server_settings
+from kainext_binance_mcp.errors import client_secrets, run_guarded
 from kainext_binance_mcp.guard import assert_read_key_safe
 from kainext_binance_mcp.ipc import IpcClient
 from kainext_binance_mcp.market import MarketEstimator
 from kainext_binance_mcp.models import (
-    AccountInfo, AssetBalance, BacktestResult, Env, IndicatorResult, Kline,
-    NewsItem, OpenOrder, OrderProposal, OrderStatus, OrderType, PriceTicker,
-    SentimentResult, Side, Signal, Ticker24h, TimeInForce,
+    AccountInfo,
+    AssetBalance,
+    BacktestResult,
+    Env,
+    IndicatorResult,
+    Kline,
+    NewsItem,
+    OpenOrder,
+    OrderProposal,
+    OrderStatus,
+    OrderType,
+    PriceTicker,
+    SentimentResult,
+    Side,
+    Signal,
+    Ticker24h,
+    TimeInForce,
 )
 from kainext_binance_mcp.tools import marketdata as marketdata_tools
 from kainext_binance_mcp.tools import news as news_tools
@@ -90,7 +105,8 @@ def _register_tools(client: object, ipc: IpcClient, market: MarketEstimator,
 
         `last_n` returns only the newest N candles (keeps context small); None = all
         fetched. `limit` still controls how many candles are fetched."""
-        return _g(lambda: marketdata_tools.get_klines(client, symbol, interval, limit, last_n=last_n))
+        return _g(lambda: marketdata_tools.get_klines(client, symbol, interval, limit,
+                                                      last_n=last_n))
 
     @mcp.tool()
     def binance_get_ticker_24h(symbol: str) -> Ticker24h:
@@ -137,7 +153,8 @@ def _register_tools(client: object, ipc: IpcClient, market: MarketEstimator,
         + ATR risk levels. PROPOSES, never executes; every factor exposes its contribution.
         Note: our own out-of-sample walk-forward found NO robust edge (docs/research/) —
         treat signals as context, not as financial advice."""
-        return _g(lambda: signals_tools.generate_signal_tool(client, symbol, interval, threshold=threshold))
+        return _g(lambda: signals_tools.generate_signal_tool(client, symbol, interval,
+                                                             threshold=threshold))
 
     @mcp.tool()
     def binance_scan_signals(symbols: list[str], interval: str = "1h") -> list[Signal]:

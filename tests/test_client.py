@@ -1,6 +1,7 @@
-from unittest.mock import MagicMock, patch
-from kainext_binance_mcp.config import Settings
+from unittest.mock import patch
+
 from kainext_binance_mcp.client import make_client
+from kainext_binance_mcp.config import Settings
 
 
 def test_make_client_sets_testnet_and_syncs_time():

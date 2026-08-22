@@ -1,7 +1,9 @@
 """Modelos Pydantic de entrada/salida y el CanonicalOrder (spec §3.3/§3.4)."""
 from __future__ import annotations
+
 from decimal import Decimal
 from typing import Literal
+
 from pydantic import BaseModel, Field, model_validator
 
 # Único formato de symbol aceptado en TODO el sistema (tools read incluidas; en
@@ -33,7 +35,7 @@ class CanonicalOrder(BaseModel):
     env: Env
 
     @model_validator(mode="after")
-    def _check(self) -> "CanonicalOrder":
+    def _check(self) -> CanonicalOrder:
         if self.type == "LIMIT":
             if self.price is None:
                 raise ValueError("LIMIT requires price")
@@ -81,8 +83,10 @@ class OrderPreview(BaseModel):
 class OrderProposal(BaseModel):
     intent_id: str | None = None
     expires_at: int | None = None
-    server_estimate: OrderPreview | None = None  # NO autoritativa; el diálogo lo renderiza el confirmador
-    error: ToolError | None = None  # poblado cuando la propuesta no procede (ej. orden ya no cancelable)
+    # NO autoritativa; el texto del diálogo lo renderiza el confirmador desde SU estimación.
+    server_estimate: OrderPreview | None = None
+    # Poblado cuando la propuesta no procede (ej. orden ya no cancelable, confirmador caído).
+    error: ToolError | None = None
 
 
 class Fill(BaseModel):
@@ -155,10 +159,10 @@ class AccountInfo(BaseModel):
     can_trade: bool
     commission_rates: dict[str, Decimal]
     account_type: str
-    key_permissions: "KeyPermissions | None" = None
+    key_permissions: KeyPermissions | None = None
 
 
-# --- Capa 2: market data + indicadores (read-only). OHLCV en Decimal (E3); indicadores en float. ---
+# --- Capa 2: market data + indicadores (read-only). OHLCV en Decimal (E3); floats. ---
 
 class Kline(BaseModel):
     """Vela OHLCV. OHLCV en Decimal por consistencia con capa 1 (E3)."""

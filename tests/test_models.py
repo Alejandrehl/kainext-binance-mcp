@@ -1,7 +1,10 @@
 from decimal import Decimal
+
 import pytest
 from pydantic import ValidationError
+
 from kainext_binance_mcp.models import CanonicalOrder
+
 
 def test_limit_requires_price():
     with pytest.raises(ValidationError):
@@ -79,8 +82,10 @@ def test_cancel_result_status_constrained_and_status_round_trips():
 def test_canonical_order_symbol_pattern():
     """Trust boundary: symbol inválido no puede ni construirse (nunca llega a AppleScript)."""
     from decimal import Decimal
+
     import pytest
     from pydantic import ValidationError
+
     from kainext_binance_mcp.models import CanonicalOrder
     ok = CanonicalOrder(symbol="BTCUSDT", side="BUY", type="MARKET",
                         quote_quantity=Decimal("10"), env="testnet")

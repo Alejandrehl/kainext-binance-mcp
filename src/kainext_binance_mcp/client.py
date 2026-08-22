@@ -1,7 +1,10 @@
 """Wrapper de python-binance (spec §4.5)."""
 from __future__ import annotations
+
 import time
+
 from binance.client import Client
+
 from kainext_binance_mcp.config import Settings
 
 

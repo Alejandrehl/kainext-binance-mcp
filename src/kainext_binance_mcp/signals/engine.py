@@ -28,8 +28,8 @@ Mapeos de factor (todos acotados a [-1, +1], deterministas, verificables a mano)
 """
 from __future__ import annotations
 
+from collections.abc import Mapping
 from decimal import Decimal
-from typing import Mapping
 
 from kainext_binance_mcp.models import Signal, SignalDirection, SignalFactor
 

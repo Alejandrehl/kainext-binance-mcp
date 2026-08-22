@@ -1,7 +1,9 @@
 import json
 from decimal import Decimal
 from unittest.mock import MagicMock
+
 from binance.exceptions import BinanceAPIException
+
 from kainext_binance_mcp.models import OrderPreview
 from kainext_binance_mcp.tools.write import spot_order_propose, spot_order_status
 
@@ -83,6 +85,7 @@ def test_propose_returns_tool_error_when_confirmer_down():
     una excepción cruda al modelo."""
     from decimal import Decimal
     from unittest.mock import MagicMock
+
     from kainext_binance_mcp.ipc import IpcUnavailableError
     from kainext_binance_mcp.tools.write import cancel_order_propose, spot_order_propose
 

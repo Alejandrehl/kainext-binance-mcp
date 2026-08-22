@@ -7,8 +7,6 @@ agregado de sentiment en ventana, disclaimer no vacío. 100% read-only, determin
 """
 from __future__ import annotations
 
-from typing import Any
-
 import pytest
 
 from kainext_binance_mcp.models import NewsItem, SentimentResult

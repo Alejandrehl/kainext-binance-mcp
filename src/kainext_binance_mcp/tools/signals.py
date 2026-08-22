@@ -14,9 +14,9 @@ degrada a 0.0: la señal técnica sigue siendo válida.
 """
 from __future__ import annotations
 
+from collections.abc import Callable
 from decimal import Decimal
-from typing import TYPE_CHECKING, Callable
-
+from typing import TYPE_CHECKING
 
 from kainext_binance_mcp import indicators as ind
 from kainext_binance_mcp.backtest import COMMISSION_TAKER
@@ -55,7 +55,7 @@ def _base_asset(symbol: str) -> str:
 
 
 def generate_signal_tool(
-    client: "Client",
+    client: Client,
     symbol: str,
     interval: str = "1h",
     *,
@@ -84,14 +84,16 @@ def generate_signal_tool(
 
     ema_fast = common.last_valid(ind.ema(close, common.EMA_FAST))
     ema_slow = common.last_valid(ind.ema(close, common.EMA_SLOW))
-    rsi = common.last_valid(ind.rsi(close, common.RSI_PERIOD), default=50.0)  # sin RSI → momentum neutro
+    # Sin RSI calculable → momentum neutro (50).
+    rsi = common.last_valid(ind.rsi(close, common.RSI_PERIOD), default=50.0)
     _macd_line, _signal_line, hist = ind.macd(close)
     macd_hist = common.last_valid(hist)
     upper, _mid, lower = ind.bollinger(close, common.BOLL_PERIOD, common.BOLL_K)
     atr_val = common.last_valid(ind.atr(df["high"], df["low"], close, common.ATR_PERIOD))
 
     last_price_float = float(close.iloc[-1])
-    bb_pos = common.bb_position(last_price_float, common.last_valid(lower), common.last_valid(upper))
+    bb_pos = common.bb_position(last_price_float, common.last_valid(lower),
+                                common.last_valid(upper))
 
     # Precio exacto en Decimal desde la cadena cruda de Binance (sin artefactos binarios).
     raw_ohlcv = df.attrs.get("raw_ohlcv")
@@ -105,7 +107,7 @@ def generate_signal_tool(
     # Sentiment del activo base (capa 3). Degrada a 0.0 si la capa 3 falla (red).
     try:
         sentiment = sentiment_fn(_base_asset(symbol), window_hours=window_hours).score
-    except Exception:
+    except Exception:  # noqa: BLE001 — degradación deliberada: sin red/feed, sentiment neutro
         sentiment = 0.0
 
     return engine.generate_signal(
@@ -128,7 +130,7 @@ def generate_signal_tool(
 
 
 def binance_backtest_signal(
-    client: "Client",
+    client: Client,
     symbol: str,
     interval: str = "1h",
     limit: int = 500,
@@ -161,7 +163,7 @@ def binance_backtest_signal(
 
 
 def scan_signals(
-    client: "Client",
+    client: Client,
     symbols: list[str],
     interval: str = "1h",
     *,

@@ -5,8 +5,6 @@ liquidez y volatilidad para informar (no para apostar).
 """
 from __future__ import annotations
 
-from decimal import Decimal
-
 from binance.client import Client
 
 from kainext_binance_mcp.indicators import atr, rsi

@@ -95,7 +95,7 @@ def test_capa2_klines_and_indicators_real(read_client):
     assert {"macd", "macd_signal", "macd_hist"} <= ind.keys()
     macd_pts = [
         (m, s, h)
-        for m, s, h in zip(ind["macd"], ind["macd_signal"], ind["macd_hist"])
+        for m, s, h in zip(ind["macd"], ind["macd_signal"], ind["macd_hist"], strict=False)
         if m is not None and s is not None and h is not None
     ]
     assert macd_pts, "MACD/signal/hist quedaron todos None"
@@ -112,7 +112,7 @@ def test_capa2_klines_and_indicators_real(read_client):
     boll_pts = [
         (u, mid, lo)
         for u, mid, lo in zip(
-            ind["bollinger_upper"], ind["bollinger_mid"], ind["bollinger_lower"]
+            ind["bollinger_upper"], ind["bollinger_mid"], ind["bollinger_lower"], strict=False
         )
         if u is not None and mid is not None and lo is not None
     ]

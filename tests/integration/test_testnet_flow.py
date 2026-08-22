@@ -118,14 +118,13 @@ def _limit_buy_params(client, symbol: str) -> tuple[Decimal, Decimal]:
 @pytest.fixture
 def testnet_stack(monkeypatch):
     """Levanta confirmador (serve en hilo) + server (IpcClient) contra testnet real."""
-    from kainext_binance_mcp.client import make_client
-    from kainext_binance_mcp.config import load_confirmer_settings, load_server_settings
-    from kainext_binance_mcp.ipc import IpcClient, serve
-    from kainext_binance_mcp.intents import IntentStore
-    from kainext_binance_mcp.market import MarketEstimator, parse_symbol_filters
-
     # Clic SIEMPRE Confirmar: el flujo de integración jamás abre osascript real.
     import kainext_binance_mcp_confirmer.dialog as dialog
+    from kainext_binance_mcp.client import make_client
+    from kainext_binance_mcp.config import load_confirmer_settings, load_server_settings
+    from kainext_binance_mcp.intents import IntentStore
+    from kainext_binance_mcp.ipc import IpcClient, serve
+    from kainext_binance_mcp.market import MarketEstimator, parse_symbol_filters
     monkeypatch.setattr(dialog, "ask_confirmation", lambda text: True)
 
     # Clients reales de testnet (read + trade; en testnet puede ser la misma key).

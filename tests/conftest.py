@@ -1,5 +1,7 @@
 from decimal import Decimal
+
 import pytest
+
 
 @pytest.fixture
 def symbol_filters_btcusdt():
