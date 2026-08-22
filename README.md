@@ -342,3 +342,7 @@ Built by **[Alejandro Exequiel Hernández Lara](https://github.com/Alejandrehl)*
 ## License
 
 [MIT](LICENSE) © 2026 Alejandro Exequiel Hernández Lara (KaiNext)
+
+---
+
+<sub>mcp-name: io.github.Alejandrehl/kainext-binance-mcp</sub>

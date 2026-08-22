@@ -1,20 +1,37 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.alejandrehl/kainext-binance-mcp",
+  "name": "io.github.Alejandrehl/kainext-binance-mcp",
   "title": "Binance Spot (security-first) + crypto analyst",
-  "description": "Security-first Binance Spot MCP and honest crypto analysis consultant: 25 tools, 5 analyst prompts, 8 knowledge resources. The AI reads and proposes; a separate human-gated confirmer holds the trade key and is the only thing that can execute.",
-  "version": "1.2.0",
+  "description": "Security-first Binance Spot MCP + honest crypto analyst. 25 tools, 5 prompts, human-gated orders.",
+  "version": "1.2.1",
   "websiteUrl": "https://github.com/Alejandrehl/kainext-binance-mcp",
   "packages": [
     {
       "registryType": "pypi",
       "identifier": "kainext-binance-mcp",
-      "version": "1.2.0",
-      "transport": { "type": "stdio" },
+      "version": "1.2.1",
+      "transport": {
+        "type": "stdio"
+      },
       "environmentVariables": [
-        { "name": "BINANCE_ENV", "description": "testnet or mainnet (start with testnet)", "isRequired": true, "isSecret": false },
-        { "name": "BINANCE_READ_API_KEY", "description": "READ-ONLY Binance API key (the server never holds a trade key)", "isRequired": true, "isSecret": true },
-        { "name": "BINANCE_READ_API_SECRET", "description": "Secret for the read-only key", "isRequired": true, "isSecret": true }
+        {
+          "name": "BINANCE_ENV",
+          "description": "testnet or mainnet (start with testnet)",
+          "isRequired": true,
+          "isSecret": false
+        },
+        {
+          "name": "BINANCE_READ_API_KEY",
+          "description": "READ-ONLY Binance API key (the server never holds a trade key)",
+          "isRequired": true,
+          "isSecret": true
+        },
+        {
+          "name": "BINANCE_READ_API_SECRET",
+          "description": "Secret for the read-only key",
+          "isRequired": true,
+          "isSecret": true
+        }
       ]
     }
   ]

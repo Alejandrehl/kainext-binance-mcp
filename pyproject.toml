@@ -1,6 +1,6 @@
 [project]
 name = "kainext-binance-mcp"
-version = "1.2.0"
+version = "1.2.1"
 description = "MCP server for Binance spot: read market data, analyze, and propose real-money trades behind a human-gated confirmer. The model never holds a trade key."
 readme = "README.md"
 license = { text = "MIT" }

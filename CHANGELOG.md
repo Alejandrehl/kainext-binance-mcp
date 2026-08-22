@@ -4,6 +4,11 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [1.2.1] — 2026-08-22
+
+- MCP Registry ownership marker (`mcp-name`) in the README (required by the registry's
+  PyPI ownership validation). No functional changes.
+
 ## [1.2.0] — 2026-08-22 — "Everywhere Edition"
 
 Execution on every OS, push notifications without keys, and backtests of the strategies
