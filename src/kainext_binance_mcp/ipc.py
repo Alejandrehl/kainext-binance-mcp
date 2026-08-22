@@ -46,7 +46,7 @@ def decode_msg(line: str) -> dict[str, Any]:
     if not isinstance(msg, dict):
         raise IpcProtocolError("mensaje no es objeto")
     if msg.get("v") != PROTOCOL_VERSION:
-        raise IpcProtocolError(f"versión de protocolo no soportada: {msg.get('v')}")
+        raise IpcProtocolError(f"unsupported protocol version: {msg.get('v')}")
     if msg.get("type") not in _ALLOWED_TYPES:
         raise IpcProtocolError(f"type no permitido: {msg.get('type')}")
     return msg

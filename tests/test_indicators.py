@@ -99,11 +99,11 @@ def test_atr_constant_range_equals_h() -> None:
 
 def test_invalid_n_raises() -> None:
     s = pd.Series([1.0, 2.0, 3.0])
-    with pytest.raises(ValueError, match="n debe ser > 0"):
+    with pytest.raises(ValueError, match="n must be > 0"):
         ema(s, 0)
-    with pytest.raises(ValueError, match="n debe ser > 0"):
+    with pytest.raises(ValueError, match="n must be > 0"):
         rsi(s, 0)
-    with pytest.raises(ValueError, match="n debe ser > 0"):
+    with pytest.raises(ValueError, match="n must be > 0"):
         bollinger(s, 0)
-    with pytest.raises(ValueError, match="n debe ser > 0"):
+    with pytest.raises(ValueError, match="n must be > 0"):
         atr(s, s, s, 0)

@@ -20,7 +20,7 @@ import pandas as pd
 def ema(series: pd.Series, n: int) -> pd.Series:
     """EMA con alpha = 2/(n+1), sembrada en el primer valor (recursión clásica)."""
     if n <= 0:
-        raise ValueError("n debe ser > 0")
+        raise ValueError("n must be > 0")
     return series.astype("float64").ewm(span=n, adjust=False).mean()
 
 
@@ -32,7 +32,7 @@ def rsi(series: pd.Series, n: int = 14) -> pd.Series:
     - sólo pérdidas (avgGain=0) => RS=0 => RSI=0.
     """
     if n <= 0:
-        raise ValueError("n debe ser > 0")
+        raise ValueError("n must be > 0")
     s = series.astype("float64")
     delta = s.diff()
     gain = delta.clip(lower=0.0)
@@ -70,7 +70,7 @@ def bollinger(
     std poblacional (ddof=0): para una serie constante std=0 y las bandas colapsan al precio.
     """
     if n <= 0:
-        raise ValueError("n debe ser > 0")
+        raise ValueError("n must be > 0")
     s = series.astype("float64")
     mid = s.rolling(window=n).mean()
     std = s.rolling(window=n).std(ddof=0)
@@ -82,7 +82,7 @@ def bollinger(
 def atr(high: pd.Series, low: pd.Series, close: pd.Series, n: int = 14) -> pd.Series:
     """ATR de Wilder sobre el True Range = max(high-low, |high-prevClose|, |low-prevClose|)."""
     if n <= 0:
-        raise ValueError("n debe ser > 0")
+        raise ValueError("n must be > 0")
     h = high.astype("float64")
     low_ = low.astype("float64")
     c = close.astype("float64")

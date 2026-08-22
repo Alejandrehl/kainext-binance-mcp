@@ -72,7 +72,7 @@ def ema_cross(df: pd.DataFrame, fast: int = 12, slow: int = 26) -> pd.Series:
     if fast <= 0 or slow <= 0:
         raise ValueError("fast y slow deben ser > 0")
     if fast >= slow:
-        raise ValueError("fast debe ser < slow")
+        raise ValueError("fast must be < slow")
     close = df["close"]
     ema_fast = indicators.ema(close, fast)
     ema_slow = indicators.ema(close, slow)

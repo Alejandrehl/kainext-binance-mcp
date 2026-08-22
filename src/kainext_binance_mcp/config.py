@@ -22,10 +22,10 @@ class Settings:
 def _require(values: Mapping[str, str], name: str) -> str:
     raw = values.get(name)
     if raw is None or raw.strip() == "":
-        raise ConfigError(f"falta o está vacía la variable {name}")
+        raise ConfigError(f"missing or empty environment variable {name}")
     if raw.strip().startswith("${") and raw.strip().endswith("}"):
         raise ConfigError(
-            f"{name} llegó sin expandir ('{raw}'): verificá el ${{VAR}} en .mcp.json / shell"
+            f"{name} arrived unexpanded ('{raw}'): check the ${{VAR}} in .mcp.json / shell"
         )
     return raw
 
@@ -33,7 +33,7 @@ def _require(values: Mapping[str, str], name: str) -> str:
 def load_server_settings(values: Mapping[str, str]) -> Settings:
     env = _require(values, "BINANCE_ENV").strip()
     if env not in ("testnet", "mainnet"):
-        raise ConfigError(f"BINANCE_ENV debe ser 'testnet' o 'mainnet', no '{env}'")
+        raise ConfigError(f"BINANCE_ENV must be 'testnet' or 'mainnet', not '{env}'")
     return Settings(
         env=env,
         api_key=_require(values, "BINANCE_READ_API_KEY"),
@@ -45,7 +45,7 @@ def load_confirmer_settings(values: Mapping[str, str]) -> Settings:
     """Idéntico pero con las trade keys (spec §4.2b)."""
     env = _require(values, "BINANCE_ENV").strip()
     if env not in ("testnet", "mainnet"):
-        raise ConfigError(f"BINANCE_ENV debe ser 'testnet' o 'mainnet', no '{env}'")
+        raise ConfigError(f"BINANCE_ENV must be 'testnet' or 'mainnet', not '{env}'")
     return Settings(
         env=env,
         api_key=_require(values, "BINANCE_TRADE_API_KEY"),

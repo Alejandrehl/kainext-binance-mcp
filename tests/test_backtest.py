@@ -260,7 +260,7 @@ def test_ema_cross_invalid_params_raise() -> None:
         ema_cross(df, fast=0, slow=5)
     with pytest.raises(ValueError, match="> 0"):
         ema_cross(df, fast=2, slow=-1)
-    with pytest.raises(ValueError, match="fast debe ser < slow"):
+    with pytest.raises(ValueError, match="fast must be < slow"):
         ema_cross(df, fast=5, slow=5)
 
 
