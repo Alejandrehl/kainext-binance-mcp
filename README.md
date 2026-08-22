@@ -4,8 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/)
 [![MCP](https://img.shields.io/badge/MCP-server-7c3aed)](https://modelcontextprotocol.io/)
-[![Tests](https://img.shields.io/badge/tests-289%20passing-brightgreen.svg)](#development)
-[![Coverage](https://img.shields.io/badge/coverage-99%25-brightgreen.svg)](#development)
+[![PyPI](https://img.shields.io/pypi/v/kainext-binance-mcp.svg)](https://pypi.org/project/kainext-binance-mcp/)
 [![Typed: mypy strict](https://img.shields.io/badge/typed-mypy%20strict-blue.svg)](pyproject.toml)
 
 > **Let an AI assistant read Binance spot markets, analyze them, and *propose* real-money
@@ -167,7 +166,7 @@ Go to Binance → **API Management**. The design uses two keys for least privile
   "mcpServers": {
     "binance": {
       "command": "uvx",
-      "args": ["--from", "git+ssh://git@github.com/Alejandrehl/kainext-binance-mcp", "kainext-binance-mcp"],
+      "args": ["kainext-binance-mcp"],
       "env": {
         "BINANCE_ENV": "${BINANCE_ENV}",
         "BINANCE_READ_API_KEY": "${BINANCE_READ_API_KEY}",
@@ -181,6 +180,10 @@ Go to Binance → **API Management**. The design uses two keys for least privile
 `${VAR}` placeholders are resolved from your shell. If a variable arrives unexpanded, the
 server aborts with a clear message — export the variables before launching your client.
 
+Installing from git instead of PyPI? Use `"args": ["--from",
+"git+https://github.com/Alejandrehl/kainext-binance-mcp@v1.0.0", "kainext-binance-mcp"]`
+(pin a tag; `git+https` works without any GitHub credentials).
+
 ### 4. Run the confirmer (required to execute)
 
 In a separate terminal, with the **trade** key exported:
@@ -190,7 +193,7 @@ export BINANCE_ENV=testnet
 export BINANCE_TRADE_API_KEY="...your trade key..."
 export BINANCE_TRADE_API_SECRET="...your trade secret..."
 
-uvx --from "git+ssh://git@github.com/Alejandrehl/kainext-binance-mcp" kainext-binance-mcp-confirmer
+uvx kainext-binance-mcp-confirmer  # or: uvx --from "git+https://github.com/Alejandrehl/kainext-binance-mcp@v1.0.0" kainext-binance-mcp-confirmer
 ```
 
 It listens on a local Unix socket. When the AI proposes an order, a **native dialog** appears
@@ -231,9 +234,27 @@ and skip cleanly without keys. CI runs lint + types + tests on every push and PR
 
 ## Roadmap
 
+- Migrate to MCP SDK 2.x (v1.0.0 pins `mcp==1.16.0`; 2.0 is a breaking API change).
 - Headless / non-macOS confirmation (today the dialog is macOS-only via `osascript`).
 - Additional order types and exchange surfaces beyond spot.
 - Optional notification channels for proposal/execution events.
+
+## Research: is there an edge?
+
+We backtested our own composite signal the hard way — **out-of-sample walk-forward over
+~51,000 real candles** (4 pairs x 3 timeframes x 3 strategies, grid search on train windows,
+measured on unseen test windows, triple anti-lookahead). Result: **0 of 36 configurations
+showed a robust out-of-sample edge**; in-sample "edges" were overfitting.
+
+That is why every signal tool ships with a disclaimer: the signals are **context, not alpha**.
+Full write-ups and reproducible scripts: [`docs/research/`](docs/research/) + [`examples/`](examples/).
+
+## Disclaimer
+
+This software is **not financial advice** and comes with **no warranty** (MIT). Trading
+cryptocurrencies can result in the **loss of your entire capital**. Signals, indicators, and
+backtests are informational; past performance does not predict future results. You are solely
+responsible for every order you confirm — that is exactly why the human gate exists.
 
 ## Author
 
