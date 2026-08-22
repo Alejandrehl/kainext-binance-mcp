@@ -49,11 +49,12 @@ def _run_web(text: str, actor) -> bool:
         t = threading.Thread(target=lambda: result.update(ok=cb.web_confirm(text)),
                              daemon=True)
         t.start()
-        for _ in range(200):
+        import time
+        for _ in range(3000):  # runners lentos: hasta 30s para que el server publique la URL
             if "url" in url_box:
                 break
-            import time
             time.sleep(0.01)
+        assert "url" in url_box, "web_confirm nunca publicó la URL (¿bind falló?)"
         actor(url_box["url"])
         t.join(timeout=10)
         assert not t.is_alive(), "web_confirm no retornó"

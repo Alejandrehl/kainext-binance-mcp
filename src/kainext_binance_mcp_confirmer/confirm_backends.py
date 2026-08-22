@@ -93,8 +93,17 @@ def web_confirm(text: str) -> bool:
             self.end_headers()
             self.wfile.write(body)
 
+    class _QuietServer(http.server.HTTPServer):
+        # server_bind default llama socket.getfqdn() → reverse-DNS que puede tardar
+        # SEGUNDOS (visto en runners macOS). Solo servimos loopback: nombre fijo.
+        def server_bind(self) -> None:
+            import socketserver
+            socketserver.TCPServer.server_bind(self)
+            self.server_name = "127.0.0.1"
+            self.server_port = self.server_address[1]
+
     try:
-        srv = http.server.HTTPServer(("127.0.0.1", 0), Handler)
+        srv = _QuietServer(("127.0.0.1", 0), Handler)
     except OSError:
         return False
     try:
