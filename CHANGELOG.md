@@ -4,6 +4,33 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [1.2.0] — 2026-08-22 — "Everywhere Edition"
+
+Execution on every OS, push notifications without keys, and backtests of the strategies
+the doctrine actually recommends.
+
+### Added
+- **Cross-platform confirmation backends** (`BINANCE_CONFIRM_MODE`: auto|macos|web|tty).
+  `web`: ephemeral localhost page (one-shot token, POST-only, Host-validated, Cancel
+  focused, 45s timeout = deny). `tty`: exact `CONFIRM` word on POSIX terminals. All
+  invariants preserved (text rendered from the canonical order, default deny).
+- **`kainext-binance-mcp-watch`**: a keyless watchdog process — price / completed daily
+  close / funding / Fear & Greed triggers from public endpoints, crossing-based
+  anti-spam with persisted state, desktop notification + optional https webhook.
+  It notifies and can execute nothing, by construction.
+- **`binance_backtest_dca`** and **`binance_backtest_harvest`** (23 → 25 tools): honest
+  historical simulations of mechanical DCA (with lump-sum comparison and max drawdown)
+  and pre-committed harvest grids (vs pure hold). `fetch_klines_range` paginates beyond
+  the 1000-candle API cap (~9 years of daily history).
+- `server.json` + listing in the official MCP Registry (`io.github.alejandrehl/*`).
+- Docs: supply-chain section (trusted publishing + Sigstore attestations — active since
+  v1.0.0, now documented), confirmation backends, watch mode.
+
+### Changed
+- Dependency batch (Dependabot): pandas 3.0.5, mypy 2.3.1, feedparser 6.0.14,
+  pytest-cov 7.1.0, actions/checkout v7, setup-uv v7. pytest-asyncio deferred to the
+  SDK 2.0 release.
+
 ## [1.1.0] — 2026-08-22 — "Analyst Edition"
 
 The MCP becomes a complete, honest crypto analysis consultant: data an analyst actually

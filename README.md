@@ -5,6 +5,7 @@
 [![Python 3.12+](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/)
 [![MCP](https://img.shields.io/badge/MCP-server-7c3aed)](https://modelcontextprotocol.io/)
 [![PyPI](https://img.shields.io/pypi/v/kainext-binance-mcp.svg)](https://pypi.org/project/kainext-binance-mcp/)
+[![Downloads](https://img.shields.io/pypi/dm/kainext-binance-mcp.svg)](https://pypi.org/project/kainext-binance-mcp/)
 [![Typed: mypy strict](https://img.shields.io/badge/typed-mypy%20strict-blue.svg)](pyproject.toml)
 
 > **Let an AI assistant read Binance spot markets, analyze them, and *propose* real-money
@@ -19,7 +20,7 @@
 
 `kainext-binance-mcp` is a [Model Context Protocol](https://modelcontextprotocol.io/) server
 that connects any MCP client (Claude Code, Claude Desktop, …) to a Binance **spot** account.
-It exposes **23 tools**, **5 analyst prompts** and **8 knowledge resources** spanning live
+It exposes **25 tools**, **5 analyst prompts** and **8 knowledge resources** spanning live
 market data, technical indicators, news & sentiment, derivatives positioning, market
 structure, portfolio/risk analytics, transparent trading signals, and **two-phase order
 execution with a human in the loop** — a complete, honest crypto analysis consultant in
@@ -33,9 +34,9 @@ model.
 > ⚠️ **Real money.** On `mainnet`, every order moves actual funds. **Always start on
 > [testnet](#testnet-first-recommended)** and switch to mainnet only once everything is
 > verified.
-> ⚠️ **Execution currently requires macOS.** The confirmer uses `osascript` for the native
-> confirmation dialog. Read/analysis tools are cross-platform; execution on other OSes is on
-> the [roadmap](#roadmap).
+> ✅ **Execution works on every OS** (v1.2): native dialog on macOS, a local web
+> confirmation page elsewhere, or a TTY prompt for headless boxes — see
+> [Confirmation backends](#confirmation-backends).
 
 ---
 
@@ -56,6 +57,10 @@ Two processes, least privilege, human-in-the-loop:
 |---|---|---|---|
 | **MCP server** `kainext-binance-mcp` | your MCP client (stdio) | **read-only** (`BINANCE_READ_*`) | reads, pre-validates, and **proposes** orders. **Never executes, holds no trade key.** |
 | **Confirmer** `kainext-binance-mcp-confirmer` | **you**, in a separate terminal | **trade** (`BINANCE_TRADE_*`) | the **sole authority**: receives canonical fields, renders the dialog, re-validates, and **executes only on your click**. |
+
+Releases are published to PyPI via **trusted publishing** and carry **Sigstore digital
+attestations** (verify any file at `pypi.org/integrity/`): what you install is provably
+what this repository's release workflow built.
 
 ```mermaid
 sequenceDiagram
@@ -89,7 +94,7 @@ physical click. The model has neither. Defense in depth on top of that:
 
 ---
 
-## Tools (23)
+## Tools (25)
 
 ### Read (5 · read key · no gate)
 
@@ -134,6 +139,8 @@ physical click. The model has neither. Defense in depth on top of that:
 | `binance_analyze_cycle` | Mayer Multiple (price/200d MA), drawdown from ATH, distance to next halving — objective cycle inputs | `symbol?` |
 | `binance_analyze_portfolio` | Live balances valued, concentration, per-asset PNL and **net break-even** (taxes + spread) — cost basis is always a user parameter | `cost_basis?`, `tax_rate?`, `cashout_spread?` |
 | `binance_assess_risk` | Realized vol (30/90d), max drawdown, BTC correlation per held asset | `symbols?` |
+| `binance_backtest_dca` | Backtests a mechanical DCA plan on real history — invested, PNL, honest lump-sum comparison, max drawdown | `symbol`, `monthly_quote`, `months`, `day_of_month?`, `fee?` |
+| `binance_backtest_harvest` | Backtests a pre-committed harvest grid (one fire per level, upward daily-close crossings) vs pure hold | `symbol`, `initial_qty`, `grid`, `start?` |
 
 ### Write — two-phase (4 · spot only · the server never executes)
 
@@ -243,6 +250,33 @@ with the exact fields (symbol, side, type, effective quantity, price, `timeInFor
 notional, and a `TESTNET` / `⚠️ REAL MONEY` banner). The default button is **Cancel**; the
 order executes only when you click **Confirm**.
 
+### Confirmation backends
+
+The confirmer decides how the human approves, via `BINANCE_CONFIRM_MODE`:
+
+| Mode | What happens | Platform |
+|---|---|---|
+| `auto` *(default)* | native dialog on macOS, web page elsewhere | all |
+| `macos` | the native dialog (screenshot above) | macOS |
+| `web` | an ephemeral page on `127.0.0.1` (one-shot token, POST-only answers, Host-validated, Cancel focused) opens in your browser | all |
+| `tty` | type `CONFIRM` in the confirmer's terminal | POSIX |
+
+Every backend keeps the same invariants: the text is rendered from the exact canonical
+order that will execute, the default is deny, and a 45s timeout denies.
+
+### Watch mode — get notified, never auto-trade
+
+`kainext-binance-mcp-watch` is a third process that holds **no keys at all** (public
+endpoints only) and can execute nothing. It checks your triggers on an interval and
+notifies (desktop notification + optional webhook) on threshold **crossings** — price,
+daily close (completed candles only), funding rate, Fear & Greed:
+
+```bash
+mkdir -p ~/.config/kainext-binance-mcp
+cp examples/watch.example.toml ~/.config/kainext-binance-mcp/watch.toml  # edit it
+kainext-binance-mcp-watch
+```
+
 ### Testnet-first (recommended)
 
 1. Generate keys at [testnet.binance.vision](https://testnet.binance.vision) (login with
@@ -250,11 +284,11 @@ order executes only when you click **Confirm**.
 2. Export `BINANCE_ENV=testnet` and the testnet keys.
 3. Exercise the full flow with fake money before touching mainnet.
 
-## Mainnet = real money + macOS
+## Mainnet = real money
 
 On `mainnet`, the confirmer re-validates against live symbol filters, shows the
 `⚠️ REAL MONEY` banner, and waits for your click. Start with minimal order sizes. Execution
-requires macOS (the dialog uses `osascript`).
+uses the native dialog on macOS; on other platforms set `BINANCE_CONFIRM_MODE=web` (or `tty`).
 
 ---
 
@@ -280,7 +314,6 @@ gets you the same ruff check locally.
 ## Roadmap
 
 - Migrate to MCP SDK 2.x (v1.0.0 pins `mcp==1.29.0`; 2.0 is a breaking API change).
-- Headless / non-macOS confirmation (today the dialog is macOS-only via `osascript`).
 - Additional order types and exchange surfaces beyond spot.
 - Optional notification channels for proposal/execution events.
 

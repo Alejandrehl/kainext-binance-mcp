@@ -64,3 +64,15 @@ but python-binance attaches the read key as a header on every request, so the re
 is transmitted to `fapi.binance.com` (same operator as the spot API; the endpoints
 ignore it). No futures permissions are required or checked, and the startup guard still
 rejects read keys that can trade.
+
+## Supply chain (v1.0+)
+
+Releases are built and published by `release.yml` via PyPI **trusted publishing** (OIDC,
+no long-lived tokens) and carry **Sigstore attestations** tied to the workflow identity —
+verify any distribution file at `https://pypi.org/integrity/`. Dependencies are pinned
+exactly and audited in CI (`pip-audit`); CodeQL runs on every push.
+
+## The watch process (v1.2)
+
+`kainext-binance-mcp-watch` holds **no credentials** and talks only to public endpoints;
+it can notify but has no code path that could place, cancel, or propose an order.
