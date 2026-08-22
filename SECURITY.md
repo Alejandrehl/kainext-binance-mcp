@@ -55,3 +55,12 @@ potential impact. Thank you for helping keep users' funds safe.
 ## Supported versions
 
 This project is pre-1.0 and evolving. Security fixes target the latest `main`.
+
+## Note on public futures endpoints (v1.1+)
+
+The analyst tools call PUBLIC Binance futures endpoints (`fapi.binance.com`: funding
+rate, open interest, mark price). These are unsigned — the API secret is never used —
+but python-binance attaches the read key as a header on every request, so the read key
+is transmitted to `fapi.binance.com` (same operator as the spot API; the endpoints
+ignore it). No futures permissions are required or checked, and the startup guard still
+rejects read keys that can trade.

@@ -19,8 +19,11 @@
 
 `kainext-binance-mcp` is a [Model Context Protocol](https://modelcontextprotocol.io/) server
 that connects any MCP client (Claude Code, Claude Desktop, …) to a Binance **spot** account.
-It exposes **18 tools** spanning live market data, technical indicators, news & sentiment,
-transparent trading signals, and **two-phase order execution with a human in the loop**.
+It exposes **23 tools**, **5 analyst prompts** and **8 knowledge resources** spanning live
+market data, technical indicators, news & sentiment, derivatives positioning, market
+structure, portfolio/risk analytics, transparent trading signals, and **two-phase order
+execution with a human in the loop** — a complete, honest crypto analysis consultant in
+one install.
 
 It is built around one uncompromising idea: **treat the language model as untrusted.** Even a
 fully prompt-injected or malfunctioning model cannot move your funds, because it has neither
@@ -86,7 +89,7 @@ physical click. The model has neither. Defense in depth on top of that:
 
 ---
 
-## Tools (18)
+## Tools (23)
 
 ### Read (5 · read key · no gate)
 
@@ -122,6 +125,16 @@ physical click. The model has neither. Defense in depth on top of that:
 | `binance_scan_signals` | Signals for a watchlist, ranked by score | `symbols`, `interval?` |
 | `binance_backtest_signal` | Backtest the composite technical signal (no lookahead, sentiment=0) | `symbol`, `interval?`, `limit?`, `threshold?` |
 
+### Analyst — layers 5/6 (5 · read key + free public APIs · 100% read-only)
+
+| Tool | What it does | Params |
+|---|---|---|
+| `binance_get_derivatives` | Funding rate (+ short history), mark/index price, open interest — the leverage thermometer. Public futures endpoints, no extra permissions | `symbol`, `funding_limit?` |
+| `binance_get_market_structure` | Fear & Greed (+week), BTC dominance, total mcap, BTC ATH/drawdown, on-chain fees & hashrate. Free sources, per-source degradation | — |
+| `binance_analyze_cycle` | Mayer Multiple (price/200d MA), drawdown from ATH, distance to next halving — objective cycle inputs | `symbol?` |
+| `binance_analyze_portfolio` | Live balances valued, concentration, per-asset PNL and **net break-even** (taxes + spread) — cost basis is always a user parameter | `cost_basis?`, `tax_rate?`, `cashout_spread?` |
+| `binance_assess_risk` | Realized vol (30/90d), max drawdown, BTC correlation per held asset | `symbols?` |
+
 ### Write — two-phase (4 · spot only · the server never executes)
 
 | Tool | What it does | Params |
@@ -135,6 +148,29 @@ The read, market-data, news, and signal tools work without the confirmer. The `*
 tools require the confirmer to be running.
 
 ---
+
+## The knowledge layer — what makes it a consultant
+
+Tools fetch data; **knowledge tells the model how to think about it.** The server ships
+its methodology through the two MCP surfaces most servers ignore:
+
+**Resources** (`kb://…`) — read them from any MCP client:
+
+| Resource | What it teaches |
+|---|---|
+| `kb://discipline` | The operating doctrine: DCA > timing, position sizing, never leverage, cold-blooded exit rules, net break-even |
+| `kb://research/no-edge` | Our own walk-forward research: 0/36 configurations with a robust edge — why signals are context, not alpha |
+| `kb://sources` | Curated source registry **with each source's bias annotated**, including where to read ETF flows |
+| `kb://frameworks/news-analysis` | Separating signal from noise: primary vs derivative, flows/rules/structure |
+| `kb://frameworks/cycle-analysis` | Halving cycles, Mayer Multiple, drawdown bands — with explicit uncertainty |
+| `kb://frameworks/token-value` | The five questions that decide whether a token captures its project's value |
+| `kb://macro-calendar` | FOMC / CPI / halving dates (static, versioned, with sources) |
+| `kb://glossary` | Terms with an interpretive reading, not just definitions |
+
+**Prompts** — complete playbooks that orchestrate the tools (in Claude Code they appear
+as slash commands): `portfolio_review`, `asset_thesis`, `market_briefing`, `risk_check`,
+`dca_plan`. Every playbook grounds itself in `kb://discipline` first, and the server's
+instructions tell clients to read the doctrine before giving any investment analysis.
 
 ## Quickstart
 

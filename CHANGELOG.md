@@ -4,6 +4,37 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [1.1.0] — 2026-08-22 — "Analyst Edition"
+
+The MCP becomes a complete, honest crypto analysis consultant: data an analyst actually
+watches, analytical frameworks as tools, and — the differentiator — the consultant's
+knowledge shipped through MCP prompts and resources.
+
+### Added
+- **Knowledge layer (layer 7)**: 8 `kb://` resources (investment discipline, the no-edge
+  walk-forward research, a source registry with bias annotations, news/cycle/token-value
+  frameworks, a versioned macro calendar, a glossary with interpretive readings) and
+  5 prompt playbooks (`portfolio_review`, `asset_thesis`, `market_briefing`, `risk_check`,
+  `dca_plan`). Server `instructions` wire the knowledge so clients read the doctrine
+  before any investment analysis. All English; a test guards that no personal data ships.
+- **Analyst data (layer 5)**: `binance_get_derivatives` (public futures funding/OI/mark —
+  no signature, no extra key permissions; synthetic on testnet) and
+  `binance_get_market_structure` (Fear & Greed + week series, BTC dominance, total market
+  cap, BTC ATH/drawdown, mempool fees & hashrate; 5s per-source timeout, >=300s TTL cache,
+  per-source degradation with notes).
+- **Analytical frameworks (layer 6)**: `binance_analyze_cycle` (Mayer Multiple, ATH
+  drawdown, halving distance), `binance_analyze_portfolio` (valuation, concentration,
+  per-asset PNL and parametric NET break-even — cost basis/tax/spread are always user
+  parameters), `binance_assess_risk` (realized vol 30/90d, max drawdown, BTC correlation).
+- 3 new RSS sources: The Block, Decrypt, Federal Reserve press (primary macro).
+- 18 → 23 tools.
+
+### Changed (behavior)
+- `binance_get_news` without `sources=` now queries 5 sources instead of 2 (The Block,
+  Decrypt and Fed press join CoinDesk and crypto.news). Fed items score neutral sentiment
+  (the lexicon is crypto-specific) — intended.
+- `requests==2.34.2` promoted from transitive to declared dependency.
+
 ## [1.0.0] — 2026-08-22
 
 First stable release. 18 tools, two-process security model (read-key MCP server proposes;
