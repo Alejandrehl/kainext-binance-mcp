@@ -20,7 +20,7 @@ dependencies = [
     "python-binance==1.0.37",
     "pydantic==2.13.4",
     "pandas==2.2.3",
-    "feedparser==6.0.11",
+    "feedparser==6.0.14",
     "requests==2.34.2",
 ]
 
