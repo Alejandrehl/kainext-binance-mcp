@@ -152,13 +152,13 @@ def test_compute_indicators_last_n_invalid_raises() -> None:
 def test_compute_indicators_unknown_indicator_raises() -> None:
     c = MagicMock()
     c.get_klines.return_value = _binance_klines(40)
-    with pytest.raises(ValueError, match="indicador"):
+    with pytest.raises(ValueError, match="indicator"):
         md.compute_indicators(c, "BTCUSDT", "1h", ["stoch"], limit=40)
 
 
 def test_compute_indicators_empty_list_raises() -> None:
     c = MagicMock()
-    with pytest.raises(ValueError, match="al menos un indicador"):
+    with pytest.raises(ValueError, match="at least one indicator"):
         md.compute_indicators(c, "BTCUSDT", "1h", [], limit=40)
 
 
@@ -204,3 +204,18 @@ def test_backtest_rsi_threshold() -> None:
         c, "BTCUSDT", "1h", "rsi_threshold", limit=60, low=30.0, high=70.0
     )
     assert res.strategy == "rsi_threshold"
+
+
+def test_get_klines_last_n_returns_tail() -> None:
+    client = MagicMock()
+    client.get_klines.return_value = _binance_klines(10)
+    allk = md.get_klines(client, "BTCUSDT", "1h", 500)
+    tail = md.get_klines(client, "BTCUSDT", "1h", 500, last_n=2)
+    assert len(tail) == 2 and tail == allk[-2:]
+
+
+def test_get_klines_last_n_invalid_raises() -> None:
+    client = MagicMock()
+    with pytest.raises(ValueError, match="last_n"):
+        md.get_klines(client, "BTCUSDT", "1h", 500, last_n=0)
+    client.get_klines.assert_not_called()

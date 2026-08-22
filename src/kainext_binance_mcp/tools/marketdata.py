@@ -21,6 +21,7 @@ from kainext_binance_mcp.models import (
     IndicatorResult,
     Kline,
     Ticker24h,
+    validate_symbol,
 )
 
 if TYPE_CHECKING:
@@ -33,16 +34,23 @@ VALID_INDICATORS: frozenset[str] = frozenset(
 
 
 def get_klines(
-    client: "Client", symbol: str, interval: str, limit: int = 500
+    client: "Client", symbol: str, interval: str, limit: int = 500,
+    last_n: int | None = None,
 ) -> list[Kline]:
-    """Velas OHLCV de un par/intervalo como modelos ``Kline`` (OHLCV en Decimal)."""
-    df = fetch_klines(client, symbol, interval, limit)
-    return klines_to_models(df)
+    """Velas OHLCV de un par/intervalo como modelos ``Kline`` (OHLCV en Decimal).
+
+    ``last_n`` (espejo de compute_indicators) devuelve sólo las últimas N velas para no
+    inflar el contexto; None (default) = todas las pedidas por ``limit``."""
+    if last_n is not None and last_n < 1:
+        raise ValueError("last_n must be >= 1 (or None for all fetched candles)")
+    df = fetch_klines(client, validate_symbol(symbol), interval, limit)
+    models = klines_to_models(df)
+    return models[-last_n:] if last_n is not None else models
 
 
 def get_ticker_24h(client: "Client", symbol: str) -> Ticker24h:
     """Stats rolling 24h de un par (cambio %, high/low, volumen, último precio)."""
-    t = client.get_ticker(symbol=symbol)
+    t = client.get_ticker(symbol=validate_symbol(symbol))
     return Ticker24h(
         symbol=t["symbol"],
         price_change_pct=Decimal(str(t["priceChangePercent"])),
@@ -82,17 +90,17 @@ def compute_indicators(
     """
     if interval not in VALID_INTERVALS:
         raise ValueError(
-            f"interval inválido: {interval!r}. Válidos: {sorted(VALID_INTERVALS)}"
+            f"invalid interval {interval!r}. Valid: {sorted(VALID_INTERVALS)}"
         )
     if not indicators:
-        raise ValueError("se requiere al menos un indicador")
+        raise ValueError("at least one indicator is required")
     unknown = [i for i in indicators if i not in VALID_INDICATORS]
     if unknown:
         raise ValueError(
-            f"indicador(es) desconocido(s): {unknown}. Válidos: {sorted(VALID_INDICATORS)}"
+            f"unknown indicator(s): {unknown}. Valid: {sorted(VALID_INDICATORS)}"
         )
 
-    df = fetch_klines(client, symbol, interval, limit)
+    df = fetch_klines(client, validate_symbol(symbol), interval, limit)
     close = df["close"]
     out: dict[str, list[float | None]] = {}
 
@@ -127,7 +135,7 @@ def compute_indicators(
 
     if last_n is not None:
         if last_n < 1:
-            raise ValueError("last_n debe ser >= 1 (o None para la serie completa)")
+            raise ValueError("last_n must be >= 1 (or None for the full series)")
         out = {name: series[-last_n:] for name, series in out.items()}
 
     as_of = int(df["close_time"].iloc[-1]) if len(df) else 0
@@ -149,11 +157,11 @@ def backtest(
     """
     if interval not in VALID_INTERVALS:
         raise ValueError(
-            f"interval inválido: {interval!r}. Válidos: {sorted(VALID_INTERVALS)}"
+            f"invalid interval {interval!r}. Valid: {sorted(VALID_INTERVALS)}"
         )
     if strategy not in bt.STRATEGIES:
         raise ValueError(
-            f"strategy desconocida: {strategy!r}. Válidas: {sorted(bt.STRATEGIES)}"
+            f"unknown strategy {strategy!r}. Valid: {sorted(bt.STRATEGIES)}"
         )
-    df = fetch_klines(client, symbol, interval, limit)
+    df = fetch_klines(client, validate_symbol(symbol), interval, limit)
     return bt.backtest_df(df, symbol, interval, strategy, **params)

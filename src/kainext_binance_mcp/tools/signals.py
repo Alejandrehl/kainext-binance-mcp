@@ -22,7 +22,7 @@ import pandas as pd
 from kainext_binance_mcp import indicators as ind
 from kainext_binance_mcp.backtest import COMMISSION_TAKER
 from kainext_binance_mcp.klines import VALID_INTERVALS, fetch_klines
-from kainext_binance_mcp.models import BacktestResult, SentimentResult, Signal
+from kainext_binance_mcp.models import BacktestResult, SentimentResult, Signal, validate_symbol
 from kainext_binance_mcp.signals import engine
 from kainext_binance_mcp.signals.backtest_signal import backtest_signal
 from kainext_binance_mcp.tools import news as news_tools
@@ -103,9 +103,10 @@ def generate_signal_tool(
     MACD, posición en Bollinger(20,2) y ATR(14); trae el sentiment crudo del activo base
     (capa 3, degradado a 0.0 si la red falla). Read-only — PROPONE, nunca ejecuta (S1).
     """
+    validate_symbol(symbol)
     if interval not in VALID_INTERVALS:
         raise ValueError(
-            f"interval inválido: {interval!r}. Válidos: {sorted(VALID_INTERVALS)}"
+            f"invalid interval {interval!r}. Valid: {sorted(VALID_INTERVALS)}"
         )
     sentiment_fn = _sentiment_fn if _sentiment_fn is not None else news_tools.get_sentiment
 
@@ -177,7 +178,7 @@ def binance_backtest_signal(
     """
     if interval not in VALID_INTERVALS:
         raise ValueError(
-            f"interval inválido: {interval!r}. Válidos: {sorted(VALID_INTERVALS)}"
+            f"invalid interval {interval!r}. Valid: {sorted(VALID_INTERVALS)}"
         )
     df = fetch_klines(client, symbol, interval, limit)
     return backtest_signal(

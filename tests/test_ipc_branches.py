@@ -27,7 +27,7 @@ from kainext_binance_mcp.models import CanonicalOrder, OrderPreview
 # --- decode_msg / _read_line: ramas unitarias --------------------------------
 
 def test_decode_msg_invalid_json():
-    with pytest.raises(IpcProtocolError, match="JSON inválido"):
+    with pytest.raises(IpcProtocolError, match="invalid JSON"):
         decode_msg("{no es json")
 
 
@@ -88,7 +88,7 @@ def test_client_empty_response_raises_unavailable():
 
     threading.Thread(target=_serve_once, daemon=True).start()
     cli = IpcClient(sock_path)
-    with pytest.raises(IpcUnavailableError, match="respuesta vacía"):
+    with pytest.raises(IpcUnavailableError, match="empty response"):
         cli.status("x")
     srv.close()
 
@@ -107,7 +107,7 @@ def test_client_invalid_response_json_raises_protocol_error():
 
     threading.Thread(target=_serve_once, daemon=True).start()
     cli = IpcClient(sock_path)
-    with pytest.raises(IpcProtocolError, match="respuesta inválida"):
+    with pytest.raises(IpcProtocolError, match="invalid response"):
         cli.status("x")
     srv.close()
 

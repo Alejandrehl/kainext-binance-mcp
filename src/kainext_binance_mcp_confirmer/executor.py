@@ -5,23 +5,15 @@ from typing import Any, Callable, cast
 from binance.client import Client
 from kainext_binance_mcp.models import CancelResult, CanonicalOrder, OrderResult, ToolError, Fill
 from kainext_binance_mcp.idempotency import derive_client_order_id, place_order_idempotent
-from kainext_binance_mcp.errors import map_binance_error, scrub_secrets
+from kainext_binance_mcp.errors import client_secrets, map_binance_error, scrub_secrets
 from kainext_binance_mcp.intents import IntentStore
-
-
-def _client_secrets(client: Client) -> list[str]:
-    """Key/secret de la trade key para scrubbear (python-binance los guarda en
-    client.API_KEY / client.API_SECRET). Sólo strings reales: con un MagicMock en tests
-    los atributos no son str y se descartan (no rompe ni filtra)."""
-    return [v for v in (getattr(client, "API_KEY", None), getattr(client, "API_SECRET", None))
-            if isinstance(v, str) and v]
 
 
 def _fail(store: IntentStore, intent_id: str, client: Client, e: Exception) -> None:
     """C2: construye el ToolError de un fallo SANITIZADO. El mensaje pasa por scrub_secrets
     con la key/secret del client → la API key/secret nunca se filtra al modelo."""
     code, msg = _extract(e)
-    message = scrub_secrets(map_binance_error(code, msg), _client_secrets(client))
+    message = scrub_secrets(map_binance_error(code, msg), client_secrets(client))
     store.mark_failed(intent_id, ToolError(code=code, message=message))
 
 
@@ -36,8 +28,8 @@ def handle_intent(*, order: CanonicalOrder, intent_id: str, store: IntentStore,
     if order.env != confirmer_env:
         store.mark_failed(intent_id, ToolError(
             code="env_mismatch",
-            message=(f"env del intent ({order.env}) no coincide con el del confirmador "
-                     f"({confirmer_env}); no se muestra diálogo ni se ejecuta")))
+            message=(f"intent env ({order.env}) does not match the confirmer env "
+                     f"({confirmer_env}); no dialog shown, nothing executed")))
         return
     try:
         preview = estimator.estimate(order)      # AUTORITATIVO: el confirmador re-valida
@@ -45,7 +37,7 @@ def handle_intent(*, order: CanonicalOrder, intent_id: str, store: IntentStore,
         _fail(store, intent_id, client, e)       # debe quedar failed, no pending hasta el TTL
         return
     if not preview.feasible:
-        store.mark_failed(intent_id, ToolError(code="infeasible", message=preview.reason or "no ejecutable"))
+        store.mark_failed(intent_id, ToolError(code="infeasible", message=preview.reason or "not executable"))
         return
     if not confirm(render_dialog_text(order, preview)):
         store.mark_rejected(intent_id)
@@ -79,8 +71,8 @@ def handle_cancel_intent(*, symbol: str, order_id: int, env: str, intent_id: str
     if env != confirmer_env:
         store.mark_failed(intent_id, ToolError(
             code="env_mismatch",
-            message=(f"env del intent ({env}) no coincide con el del confirmador "
-                     f"({confirmer_env}); no se muestra diálogo ni se cancela")))
+            message=(f"intent env ({env}) does not match the confirmer env "
+                     f"({confirmer_env}); no dialog shown, nothing canceled")))
         return
     try:
         current = client.get_order(symbol=symbol, orderId=order_id)

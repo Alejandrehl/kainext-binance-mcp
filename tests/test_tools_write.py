@@ -66,7 +66,7 @@ def test_cancel_propose_handles_get_order_raising_without_traceback():
     assert out.intent_id is None
     assert out.error is not None and out.error.code == -2013
     assert "READ_KEY_LEAK_abc" not in out.error.message  # scrubbeado
-    assert "no existe" in out.error.message.lower()      # mapeado (-2013)
+    assert "does not exist" in out.error.message.lower()  # mapeado (-2013)
     ipc.register_cancel.assert_not_called()
 
 

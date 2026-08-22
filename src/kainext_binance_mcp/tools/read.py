@@ -3,7 +3,7 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any
 from binance.client import Client
-from kainext_binance_mcp.models import AssetBalance, OpenOrder, PriceTicker
+from kainext_binance_mcp.models import AssetBalance, OpenOrder, PriceTicker, validate_symbol
 from kainext_binance_mcp.guard import perms_from_api
 
 if TYPE_CHECKING:
@@ -21,7 +21,7 @@ def get_balance(client: Client) -> list[AssetBalance]:
 
 
 def get_price(client: Client, symbol: str) -> PriceTicker:
-    t = client.get_symbol_ticker(symbol=symbol)
+    t = client.get_symbol_ticker(symbol=validate_symbol(symbol))
     return PriceTicker(symbol=t["symbol"], price=Decimal(t["price"]))
 
 
@@ -35,12 +35,14 @@ def _to_open_order(o: dict[str, Any]) -> OpenOrder:
 
 
 def get_open_orders(client: Client, symbol: str | None = None) -> list[OpenOrder]:
-    raw = client.get_open_orders(symbol=symbol) if symbol else client.get_open_orders()
+    raw = client.get_open_orders(symbol=validate_symbol(symbol)) if symbol else client.get_open_orders()
     return [_to_open_order(o) for o in raw]
 
 
 def get_order_history(client: Client, symbol: str, limit: int = 50) -> list[OpenOrder]:
-    raw = client.get_all_orders(symbol=symbol, limit=limit)
+    if not 1 <= limit <= 1000:
+        raise ValueError("limit must be between 1 and 1000")
+    raw = client.get_all_orders(symbol=validate_symbol(symbol), limit=limit)
     return [_to_open_order(o) for o in raw]
 
 

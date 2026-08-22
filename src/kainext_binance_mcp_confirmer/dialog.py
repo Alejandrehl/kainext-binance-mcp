@@ -8,17 +8,17 @@ _DIALOG_TIMEOUT_S = 45  # < tool-call timeout del cliente (spec §2.1.9); para M
 
 
 def render_dialog_text(order: CanonicalOrder, preview: OrderPreview) -> str:
-    env_banner = "⚠️ PLATA REAL (MAINNET)" if order.env == "mainnet" else "TESTNET"
+    env_banner = "⚠️ REAL MONEY (MAINNET)" if order.env == "mainnet" else "TESTNET"
     lines = [
         env_banner, "",
         f"{order.side} {order.type}  {order.symbol}",
-        f"Cantidad efectiva: {preview.effective_qty}",
+        f"Effective quantity: {preview.effective_qty}",
     ]
     if order.price is not None:
-        lines.append(f"Precio: {preview.price}  ({order.time_in_force})")
+        lines.append(f"Price: {preview.price}  ({order.time_in_force})")
     if order.type == "MARKET":
-        lines.append("(MARKET: cantidad/costo estimados; aprobás la CANTIDAD, no el costo)")
-    lines.append(f"Notional estimado: {preview.est_notional}")
+        lines.append("(MARKET: quantity/cost are estimates; you approve the QUANTITY, not the cost)")
+    lines.append(f"Estimated notional: {preview.est_notional}")
     return "\n".join(lines)
 
 
@@ -26,21 +26,21 @@ def render_cancel_dialog_text(*, symbol: str, order_id: int, env: str,
                               status: str | None = None) -> str:
     """Texto del diálogo de cancelación. Como el resto del gate, lo renderiza el
     confirmador desde los campos que él mismo va a ejecutar (spec §4.3)."""
-    env_banner = "⚠️ PLATA REAL (MAINNET)" if env == "mainnet" else "TESTNET"
-    lines = [env_banner, "", f"CANCELAR orden {order_id}  {symbol}"]
+    env_banner = "⚠️ REAL MONEY (MAINNET)" if env == "mainnet" else "TESTNET"
+    lines = [env_banner, "", f"CANCEL order {order_id}  {symbol}"]
     if status is not None:
-        lines.append(f"Estado actual: {status}")
+        lines.append(f"Current status: {status}")
     return "\n".join(lines)
 
 
 def parse_osascript_result(*, returncode: int, stdout: str) -> bool:
-    # Confirmar = exit 0, sin timeout, y 'button returned:Confirmar' presente.
+    # Confirm = exit 0, no timeout, and 'button returned:Confirm' present.
     # OJO: con `giving up after`, osascript anexa ", gave up:false" al stdout
-    # (ej. "button returned:Confirmar, gave up:false") → NO usar endswith.
+    # (e.g. "button returned:Confirm, gave up:false") → do NOT use endswith.
     # Cancelar/Esc => exit != 0 ("User canceled. (-128)"); timeout => "gave up:true".
     if returncode != 0 or "gave up:true" in stdout:
         return False
-    return "button returned:Confirmar" in stdout
+    return "button returned:Confirm" in stdout
 
 
 def escape_applescript(text: str) -> str:
@@ -52,12 +52,10 @@ def escape_applescript(text: str) -> str:
 def ask_confirmation(text: str) -> bool:
     safe = escape_applescript(text)
     script = (
-        f'display dialog "{safe}" buttons {{"Cancelar","Confirmar"}} '
-        f'default button "Cancelar" cancel button "Cancelar" '
-        f'with title "Binance MCP — confirmar orden" with icon caution '
+        f'display dialog "{safe}" buttons {{"Cancel","Confirm"}} '
+        f'default button "Cancel" cancel button "Cancel" '
+        f'with title "Binance MCP — confirm order" with icon caution '
         f'giving up after {_DIALOG_TIMEOUT_S}'
     )
     proc = subprocess.run(["osascript", "-e", script], capture_output=True, text=True)
-    if "gave up:true" in proc.stdout:
-        return False
     return parse_osascript_result(returncode=proc.returncode, stdout=proc.stdout)

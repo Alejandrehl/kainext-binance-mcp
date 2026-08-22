@@ -2,7 +2,7 @@
 from __future__ import annotations
 from decimal import Decimal
 from typing import Any, Protocol
-from kainext_binance_mcp.errors import map_binance_error, scrub_secrets
+from kainext_binance_mcp.errors import client_secrets, map_binance_error, scrub_secrets
 from kainext_binance_mcp.ipc import IpcUnavailableError
 from kainext_binance_mcp.models import (
     CanonicalOrder, Env, OrderProposal, OrderPreview, OrderStatus, OrderType,
@@ -10,14 +10,6 @@ from kainext_binance_mcp.models import (
 )
 
 _NOT_CANCELABLE = {"FILLED", "CANCELED", "EXPIRED"}
-
-
-def _client_secrets(client: Any) -> list[str]:
-    """Key/secret del client para scrubbear mensajes de error (python-binance los guarda
-    en client.API_KEY / client.API_SECRET). Sólo strings reales (con un MagicMock en tests
-    los atributos no son str y se descartan)."""
-    return [v for v in (getattr(client, "API_KEY", None), getattr(client, "API_SECRET", None))
-            if isinstance(v, str) and v]
 
 
 class IpcClient(Protocol):
@@ -59,12 +51,12 @@ def cancel_order_propose(*, ipc: Any, client: Any, symbol: str, order_id: int,
         code = getattr(e, "code", -1)
         msg = getattr(e, "message", str(e))
         code = int(code) if isinstance(code, int) else -1
-        message = scrub_secrets(map_binance_error(code, str(msg)), _client_secrets(client))
+        message = scrub_secrets(map_binance_error(code, str(msg)), client_secrets(client))
         return OrderProposal(error=ToolError(code=code, message=message))
     if current.get("status") in _NOT_CANCELABLE:
         return OrderProposal(error=ToolError(
             code=-2011,
-            message=f"La orden {order_id} ya no es cancelable (estado {current.get('status')}).",
+            message=f"Order {order_id} is no longer cancelable (status {current.get('status')}).",
         ))
     try:
         intent_id, expires_at = ipc.register_cancel(symbol=symbol, order_id=order_id, env=env)

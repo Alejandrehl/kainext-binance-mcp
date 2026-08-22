@@ -53,7 +53,7 @@ def _resolve_sources(
         src = registry.get(name)
         if src is None:
             raise ValueError(
-                f"fuente desconocida: {name!r}. Disponibles: {sorted(registry)}"
+                f"unknown source {name!r}. Available: {sorted(registry)}"
             )
         resolved.append(src)
     return resolved

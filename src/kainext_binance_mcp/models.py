@@ -4,6 +4,10 @@ from decimal import Decimal
 from typing import Literal
 from pydantic import BaseModel, Field, model_validator
 
+# Único formato de symbol aceptado en TODO el sistema (tools read incluidas; en
+# CanonicalOrder además es el trust boundary hacia AppleScript).
+SYMBOL_PATTERN = r"^[A-Z0-9]{2,20}$"
+
 Side = Literal["BUY", "SELL"]
 OrderType = Literal["MARKET", "LIMIT"]
 Env = Literal["testnet", "mainnet"]
@@ -15,7 +19,7 @@ class CanonicalOrder(BaseModel):
     model_config = {"frozen": True}
     # Trust boundary: symbol es el único texto controlado por el modelo que llega a un
     # intérprete (AppleScript, dialog.py). El pattern lo cierra acá, en el modelo canónico.
-    symbol: str = Field(pattern=r"^[A-Z0-9]{2,20}$")
+    symbol: str = Field(pattern=SYMBOL_PATTERN)
     side: Side
     type: OrderType
     quantity: Decimal | None = None
@@ -28,23 +32,23 @@ class CanonicalOrder(BaseModel):
     def _check(self) -> "CanonicalOrder":
         if self.type == "LIMIT":
             if self.price is None:
-                raise ValueError("LIMIT requiere price")
+                raise ValueError("LIMIT requires price")
             if self.time_in_force is None:
-                raise ValueError("LIMIT requiere time_in_force (default GTC en la tool)")
+                raise ValueError("LIMIT requires time_in_force (the tool defaults to GTC)")
             if self.quote_quantity is not None:
-                raise ValueError("quote_quantity sólo aplica a MARKET")
+                raise ValueError("quote_quantity only applies to MARKET orders")
             if self.quantity is None:
-                raise ValueError("LIMIT requiere quantity")
+                raise ValueError("LIMIT requires quantity")
         if self.type == "MARKET":
             if self.price is not None:
-                raise ValueError("MARKET no acepta price")
+                raise ValueError("MARKET does not accept price")
             if self.time_in_force is not None:
-                raise ValueError("MARKET no acepta time_in_force")
+                raise ValueError("MARKET does not accept time_in_force")
         if (self.quantity is None) == (self.quote_quantity is None):
-            raise ValueError("exactamente uno de quantity / quote_quantity")
+            raise ValueError("exactly one of quantity / quote_quantity is required")
         for v in (self.quantity, self.quote_quantity, self.price):
             if v is not None and v <= 0:
-                raise ValueError("montos deben ser > 0")
+                raise ValueError("amounts must be > 0")
         return self
 
 
@@ -270,3 +274,11 @@ class Signal(BaseModel):
     atr: float
     disclaimer: str
     as_of: int
+
+
+def validate_symbol(symbol: str) -> str:
+    """Valida el symbol en las tools read-only (mismo pattern que CanonicalOrder)."""
+    import re
+    if not re.fullmatch(SYMBOL_PATTERN, symbol):
+        raise ValueError(f"invalid symbol {symbol!r}: expected {SYMBOL_PATTERN} (e.g. BTCUSDT)")
+    return symbol

@@ -40,7 +40,7 @@ def fetch_klines(
     """
     if interval not in VALID_INTERVALS:
         raise ValueError(
-            f"interval inválido: {interval!r}. Válidos: {sorted(VALID_INTERVALS)}"
+            f"invalid interval {interval!r}. Valid: {sorted(VALID_INTERVALS)}"
         )
     capped = max(1, min(int(limit), MAX_LIMIT))
     raw: list[list[Any]] = client.get_klines(symbol=symbol, interval=interval, limit=capped)

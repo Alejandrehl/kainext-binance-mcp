@@ -36,3 +36,19 @@ def test_get_account_info_testnet_omits_key_perms():
     from kainext_binance_mcp.tools.read import get_account_info
     info = get_account_info(c, is_testnet=True)
     assert info.key_permissions is None and info.can_trade
+
+
+def test_read_tools_validate_symbol_and_limit():
+    import pytest
+    from unittest.mock import MagicMock
+    from kainext_binance_mcp.tools.read import get_order_history, get_price
+
+    client = MagicMock()
+    with pytest.raises(ValueError, match="invalid symbol"):
+        get_price(client, 'BTC"USDT')
+    with pytest.raises(ValueError, match="limit"):
+        get_order_history(client, "BTCUSDT", limit=0)
+    with pytest.raises(ValueError, match="limit"):
+        get_order_history(client, "BTCUSDT", limit=1001)
+    client.get_symbol_ticker.assert_not_called()
+    client.get_all_orders.assert_not_called()

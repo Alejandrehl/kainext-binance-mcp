@@ -42,7 +42,7 @@ def decode_msg(line: str) -> dict[str, Any]:
     try:
         msg = json.loads(line)
     except json.JSONDecodeError as e:
-        raise IpcProtocolError(f"JSON inválido: {e}") from e
+        raise IpcProtocolError(f"invalid JSON: {e}") from e
     if not isinstance(msg, dict):
         raise IpcProtocolError("mensaje no es objeto")
     if msg.get("v") != PROTOCOL_VERSION:
@@ -62,7 +62,7 @@ def _read_line(conn: socket.socket) -> str:
         if not b:
             break
         chunks.append(b)
-        if b.endswith(b"\n") or b"\n" in b:
+        if b"\n" in b:
             break
     return b"".join(chunks).decode("utf-8")
 
@@ -76,24 +76,24 @@ class IpcClient:
     def _request(self, msg: dict[str, Any]) -> dict[str, Any]:
         if not os.path.exists(self.socket_path):
             raise IpcUnavailableError(
-                "confirmador no disponible: arrancá `kainext-binance-mcp-confirmer` "
-                f"(no existe el socket {self.socket_path})")
+                "confirmer unavailable: start `kainext-binance-mcp-confirmer` "
+                f"(socket {self.socket_path} does not exist)")
         try:
             conn = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
             conn.connect(self.socket_path)
         except OSError as e:
-            raise IpcUnavailableError(f"confirmador no disponible: {e}") from e
+            raise IpcUnavailableError(f"confirmer unavailable: {e}") from e
         try:
             conn.sendall(encode_msg(msg).encode("utf-8"))
             resp = _read_line(conn)
         finally:
             conn.close()
         if not resp:
-            raise IpcUnavailableError("confirmador no disponible: respuesta vacía")
+            raise IpcUnavailableError("confirmer unavailable: empty response")
         try:
             data = json.loads(resp)
         except json.JSONDecodeError as e:
-            raise IpcProtocolError(f"respuesta inválida del confirmador: {e}") from e
+            raise IpcProtocolError(f"invalid response from confirmer: {e}") from e
         # Envelope de error del servidor IPC: {"error": "..."} y sin payload de estado.
         # (OrderStatus también lleva una clave "error", pero junto a "state".)
         if isinstance(data, dict) and "error" in data and "state" not in data \
@@ -197,7 +197,7 @@ def serve(socket_path: str, store: Any, client: Any, nonce: str,
                 except IpcProtocolError as e:
                     response = {"error": str(e)}  # NO se actúa
                 except Exception as e:  # noqa: BLE001 — nunca tumbar el loop
-                    response = {"error": f"mensaje inválido: {e}"}
+                    response = {"error": f"invalid message: {e}"}
                 conn.sendall(encode_msg(response).encode("utf-8"))
             finally:
                 conn.close()
