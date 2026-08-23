@@ -1,4 +1,12 @@
-# Roadmap — the quant programme
+# Roadmap — Alpha
+
+**The point of this programme is to make money.** The name says the bar: *alpha* is the
+return above the benchmark. If holding beats it, the alpha is zero and there is no business
+here, however elegant the engine.
+
+That is also why the rigour exists. Every gate below is **insurance on real capital** — it
+stops money going into an edge that does not survive contact with out-of-sample data. It is
+not an intellectual exercise.
 
 Three phases. This file states the **measured** state, not an estimate: a roadmap that
 doesn't say how much is actually left is marketing.
@@ -12,8 +20,9 @@ through this roadmap. What follows is the futures research programme.
 
 ## Phase 0 — the engine that kills strategies · **2 of 8 modules**
 
-The deliverable is not a strategy. It is the machine that tells you, honestly, whether a
-strategy has an edge. If the first hypothesis dies in walk-forward, the phase succeeded.
+Phase 0 produces no revenue by itself, and that is the point: it is the machine that tells
+you, honestly, whether a strategy has an edge **before** real capital is committed. If the
+first hypothesis dies in walk-forward, the phase saved money rather than losing it.
 
 | Module | State | What it does |
 |---|---|---|

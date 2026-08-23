@@ -6,7 +6,7 @@ Este repo es **dos cosas a la vez**, y confundirlas es el error caro:
    (`kainext-binance-mcp`) y en el MCP Registry. Lo usa el operador a diario. 25 tools,
    5 prompts, 8 recursos `kb://`.
 2. **Un motor de research de futuros USD-M**, offline y sin keys, detrás del extra
-   `[research]`. No expone ninguna tool. Es la Fase 0 de un programa quant de varios meses.
+   `[research]`. No expone ninguna tool. Es la Fase 0 de **Alpha**, el programa de trading sistemático del operador.
 
 **Qué NO es:** un bot de trading. La ejecución de órdenes es spot-only y requiere un clic
 humano en un proceso aparte. El motor de futuros investiga; no puede colocar una orden.
@@ -63,6 +63,15 @@ CI corre esas mismas cosas en 4 celdas (ubuntu/macos × py3.12/3.13) + `pip-audi
 
 ---
 
+## El objetivo es plata, y el rigor es el seguro
+
+**Alpha** existe para generar ingresos — el nombre es la métrica: el *alpha* es el retorno
+*por sobre* el benchmark. Si holdear rinde más, el alpha es cero y no hay negocio.
+
+Los gates de acá arriba no son celo técnico: son lo que impide meter capital real en un edge
+que no existe. Probar 1.000 configuraciones **garantiza** encontrar ruido que parece alpha;
+DSR y PBO son lo que separa una de la otra. El rigor protege la plata, no la reemplaza.
+
 ## Estado y siguiente paso
 
 **Fase 0 va en 2 de 8 módulos.** `futures/data.py` y `futures/universe.py` están hechos,
@@ -77,8 +86,8 @@ La arquitectura y los gotchas de datos, en
 
 ## Dónde vive el resto
 
-- **Board (to-dos):** Linear, team `Ale Hernández SpA`, proyecto del programa quant. El MCP
-  de Linear está declarado en `.mcp.json` de este repo.
+- **Board (to-dos):** Linear, team `Ale Hernández SpA`, proyecto **Alpha**. El MCP de Linear
+  está declarado en el `.mcp.json` de este repo.
 - **Decisiones y hallazgos (no to-dos):** el vault Obsidian del operador,
   `06-finanzas/inversiones/trading-journal/`. **Linear = accionable, vault = segundo
   cerebro.** No mezclar.
