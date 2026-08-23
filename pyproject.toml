@@ -16,7 +16,7 @@ classifiers = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "mcp[cli]==1.29.0",
+    "mcp[cli]==2.0.0",
     "python-binance==1.0.37",
     "pydantic==2.13.4",
     "pandas==3.0.5",
