@@ -2,7 +2,7 @@
   "_comment": "MCPs del repo. REGLA DURA: aquí solo entran servidores remotos que autentican por OAuth interactiva — nunca un bloque `env` con credenciales. El repo es público y `tests/test_consistency.py` rompe el build si aparece algo que parezca una key. El propio binance MCP NO va: no se necesita el MCP para desarrollar el MCP, y su config sí llevaría BINANCE_*_API_KEY.",
   "mcpServers": {
     "linear": {
-      "_comment": "Linear oficial (https://mcp.linear.app/mcp). Primer uso: /mcp -> linear -> Authenticate. El board del programa quant vive en el team `Ale Hernández SpA`.",
+      "_comment": "Linear oficial (https://mcp.linear.app/mcp). Primer uso: /mcp -> linear -> Authenticate. El board de Alpha (el programa de trading sistemático) vive en el team `Ale Hernández SpA`.",
       "type": "http",
       "url": "https://mcp.linear.app/mcp"
     },
