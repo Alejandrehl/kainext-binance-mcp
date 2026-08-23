@@ -28,7 +28,7 @@ jobs:
       - name: Create venv + install project (dev)
         run: |
           uv venv --python ${{ matrix.python }}
-          uv pip install -e ".[dev]"
+          uv pip install -e ".[dev,research]"
 
       - name: Ruff (src + tests + examples — gate de release)
         run: uv run ruff check src/ tests/ examples/
@@ -49,6 +49,6 @@ jobs:
       - name: Install project + pip-audit
         run: |
           uv venv --python 3.12
-          uv pip install -e . pip-audit
+          uv pip install -e ".[research]" pip-audit
       - name: pip-audit
         run: uv run pip-audit --skip-editable

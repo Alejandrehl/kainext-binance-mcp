@@ -1,11 +1,11 @@
 [project]
 name = "kainext-binance-mcp"
 version = "1.2.1"
-description = "MCP server for Binance spot: read market data, analyze, and propose real-money trades behind a human-gated confirmer. The model never holds a trade key."
+description = "MCP server for Binance: read market data, analyze, and propose real-money spot trades behind a human-gated confirmer — plus an offline USD-M futures research engine. The model never holds a trade key."
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "Alejandro Exequiel Hernández Lara" }]
-keywords = ["mcp", "binance", "trading", "crypto", "spot", "model-context-protocol", "llm", "ai-agent"]
+keywords = ["mcp", "binance", "trading", "crypto", "spot", "futures", "backtesting", "quant", "model-context-protocol", "llm", "ai-agent"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -28,6 +28,9 @@ dependencies = [
 # Research/backtesting: NO lo necesita el servidor MCP. Quien instala por `uvx` no
 # arrastra nada de esto.
 research = ["numpy==2.5.2"]
+# `research` NO lo instala quien usa el servidor MCP. El CI sí lo instala, o `futures/`
+# no importaría y la cobertura de esos archivos caería a 0 (build rojo por la razón
+# equivocada).
 dev = ["pytest==8.3.3", "pytest-cov==7.1.0", "mypy==2.3.1", "ruff==0.7.2", "pytest-asyncio==0.24.0"]
 
 [project.urls]

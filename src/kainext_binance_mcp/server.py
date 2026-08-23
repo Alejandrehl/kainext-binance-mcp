@@ -62,6 +62,7 @@ _T = TypeVar("_T")
 # viejas. `tests/test_consistency.py` lo ata al alcance real del paquete.
 _INSTRUCTIONS = (
     "Security-first Binance server AND an honest crypto analysis consultant. "
+    "Spot execution plus an offline USD-M futures research engine. "
     "Ground rules for the client: (1) BEFORE giving any investment analysis or "
     "recommendation, read the resources kb://discipline and kb://research/no-edge and "
     "stay consistent with them — no price predictions, no timing calls, signals are "
