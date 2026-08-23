@@ -78,6 +78,12 @@ filterwarnings = [
     # ResourceWarning sigue rompiendo el build. Producción sí cierra: `serve()` en su
     # finally (ipc.py:217) y `IpcClient._request` en el suyo (ipc.py:92).
     "ignore:unclosed <socket.socket:ResourceWarning",
+    # python-binance (`helpers.py:90 get_loop`) llama a `asyncio.get_event_loop()`, que en
+    # Python 3.12 CREA un loop y no lo cierra nunca; en 3.13 ese método ya no crea nada, y
+    # por eso solo fallaban las celdas 3.12 de la matriz. El loop huérfano avisa cuando el
+    # GC pasa, así que el fallo es NO DETERMINISTA: local puede salir verde por suerte.
+    # No es nuestro loop y cerrarlo por fuera rompería a quien lo reutilice.
+    "ignore:unclosed event loop:ResourceWarning",
 ]
 
 [tool.mypy]
