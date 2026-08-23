@@ -25,6 +25,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Research/backtesting: NO lo necesita el servidor MCP. Quien instala por `uvx` no
+# arrastra nada de esto.
+research = ["numpy==2.5.2"]
 dev = ["pytest==8.3.3", "pytest-cov==7.1.0", "mypy==2.3.1", "ruff==0.7.2", "pytest-asyncio==0.24.0"]
 
 [project.urls]
@@ -52,6 +55,27 @@ packages = ["src/kainext_binance_mcp", "src/kainext_binance_mcp_confirmer"]
 addopts = "--cov=kainext_binance_mcp --cov=kainext_binance_mcp_confirmer --cov-report=term-missing --cov-fail-under=90"
 markers = ["integration: tests que pegan a testnet (requieren keys)"]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+# Gate de warnings: `error` por defecto ⇒ un warning nuevo rompe el build. Los ignores
+# son SOLO de dependencias upstream, cada uno con su causa nombrada; si alguna sube de
+# versión y deja de emitirlos, este bloque se poda.
+filterwarnings = [
+    "error",
+    # python-binance 1.0.37 importa el módulo legacy de `websockets` al cargar su cliente.
+    "ignore:websockets.WebSocketClientProtocol is deprecated:DeprecationWarning",
+    "ignore:websockets.legacy is deprecated:DeprecationWarning",
+    # python-binance usa asyncio.get_event_loop() fuera de corrutina en sus helpers.
+    "ignore:There is no current event loop:DeprecationWarning",
+    # mcp[cli] declara `lifespan` con una forward reference sin resolver.
+    "ignore:Field 'lifespan' has an incomplete definition:UserWarning",
+    # Los tests de IPC arrancan `serve()` en un hilo daemon que por diseño no se apaga
+    # (el confirmador es un proceso de vida larga que se mata). Su listener queda abierto
+    # y el GC lo recolecta en cualquier test posterior, así que el ignore no puede ir
+    # acotado por archivo. Va por MENSAJE, no por categoría: cualquier otro
+    # ResourceWarning sigue rompiendo el build. Producción sí cierra: `serve()` en su
+    # finally (ipc.py:217) y `IpcClient._request` en el suyo (ipc.py:92).
+    "ignore:unclosed <socket.socket:ResourceWarning",
+]
 
 [tool.mypy]
 strict = true

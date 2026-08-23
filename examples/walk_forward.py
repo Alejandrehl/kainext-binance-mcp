@@ -49,7 +49,7 @@ import pandas as pd
 from binance.client import Client
 
 from kainext_binance_mcp import indicators
-from kainext_binance_mcp.backtest import COMMISSION_TAKER, ema_cross, rsi_threshold
+from kainext_binance_mcp.backtest import COMMISSION_TAKER, ema_cross, rsi_threshold, simulate
 
 DATA_SOURCE = "mainnet_public"
 
@@ -188,30 +188,17 @@ def sim_window(
     decide ``sig[i-1]`` y el fill es ``open[i]``. Marca a close cualquier posición abierta al
     final del bloque (no fuerza un fill de salida).
 
+    Delega en ``backtest.simulate``: un solo motor para todo el repo. Antes esto era una
+    segunda implementación del mismo bucle escrita a mano acá, que es como un resultado
+    publicado se vuelve incorrecto sin que nadie lo note. La equivalencia está fijada por
+    ``tests/test_walkforward_differential.py``; el costo medido es ~2 s sobre el research
+    completo, así que no había ninguna razón para mantener dos motores.
+
     Devuelve (retorno_total_pct, n_trades_cerrados).
     """
-    cash = 1.0
-    units = 0.0
-    pos = 0
-    n_trades = 0
-    last_close = closes[start]
-    # i = start+1: el primer fill ejecutable usa sig[start] (decidido al close de start).
-    for i in range(start + 1, end):
-        target = int(sig[i - 1])
-        fill = opens[i]
-        if target == 1 and pos == 0:
-            units = (cash * (1.0 - commission)) / fill
-            cash = 0.0
-            pos = 1
-        elif target == 0 and pos == 1:
-            proceeds = units * fill * (1.0 - commission)
-            cash = proceeds
-            units = 0.0
-            pos = 0
-            n_trades += 1
-        last_close = closes[i]
-    equity = cash + units * last_close
-    return (equity - 1.0) * 100.0, n_trades
+    window = pd.DataFrame({"open": opens[start:end], "close": closes[start:end]})
+    trades, equity = simulate(window, pd.Series(sig[start:end]), commission)
+    return (equity[-1] - 1.0) * 100.0, len(trades)
 
 
 def buy_hold_window(opens: np.ndarray, closes: np.ndarray, start: int, end: int) -> float:
