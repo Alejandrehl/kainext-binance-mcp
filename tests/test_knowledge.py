@@ -4,13 +4,13 @@ from __future__ import annotations
 import asyncio
 
 import pytest
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from kainext_binance_mcp.knowledge import _RESOURCES, read_content, register_knowledge
 
 
-def _fresh() -> FastMCP:
-    m = FastMCP("test")
+def _fresh() -> MCPServer:
+    m = MCPServer("test")
     register_knowledge(m)
     return m
 

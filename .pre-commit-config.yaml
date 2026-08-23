@@ -1,7 +1,7 @@
 # Instalar una vez: `uv run pre-commit install` (o `pipx run pre-commit install`).
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.7.2
+    rev: v0.16.3
     hooks:
       - id: ruff
         args: [--fix]

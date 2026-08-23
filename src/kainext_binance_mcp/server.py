@@ -6,7 +6,7 @@ from collections.abc import Callable, Mapping
 from decimal import Decimal
 from typing import Literal, TypeVar
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from kainext_binance_mcp import runtime
 from kainext_binance_mcp.config import Settings, load_server_settings
@@ -77,7 +77,11 @@ _INSTRUCTIONS = (
     "about the portfolio are answered under rules 1-6; rule 7 is never an escape hatch."
 )
 
-mcp = FastMCP("binance", _INSTRUCTIONS)
+# `instructions=` POR NOMBRE, nunca posicional. En el FastMCP de mcp 1.x el 2º posicional
+# era `instructions`; en `MCPServer` (mcp 2.x) es `title`. Pasarlo posicional deja
+# `instructions=None` y la doctrina deja de inyectarse en cada sesión, en silencio y sin
+# romper nada. Lo ata `test_instructions_actually_reach_the_server_object`.
+mcp = MCPServer("binance", instructions=_INSTRUCTIONS)
 
 
 def bootstrap(env: Mapping[str, str]) -> tuple[Settings, object]:
@@ -100,7 +104,7 @@ def _register_tools(client: object, ipc: IpcClient, market: MarketEstimator,
 
     # Contrato de error único (v1.0.0): toda excepción de una tool read-only sale mapeada
     # + scrubbeada como ToolExecutionError (via run_guarded, DENTRO del shim — un decorador
-    # rompe la introspección de annotations de FastMCP). Las write mantienen OrderProposal.
+    # rompe la introspección de annotations de MCPServer). Las write mantienen OrderProposal.
     def _g(fn: Callable[[], _T]) -> _T:
         return run_guarded(lambda: client_secrets(client), fn)
 

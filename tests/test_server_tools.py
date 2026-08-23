@@ -2,7 +2,7 @@
 
 Cada @mcp.tool() delega en funciones ya testeadas; acá verificamos que el cableado
 (qué dependencia recibe cada tool, con qué args) es correcto, invocando la función
-subyacente (`.fn`) que FastMCP registró. El server NUNCA ejecuta: las write delegan
+subyacente (`.fn`) que MCPServer registró. El server NUNCA ejecuta: las write delegan
 en el confirmador vía ipc."""
 from __future__ import annotations
 
@@ -13,9 +13,9 @@ from kainext_binance_mcp import server as srv
 
 
 def _register(client, ipc, market, *, is_testnet=True):
-    # Aísla el registro en una FastMCP nueva por test (no contamina el módulo global).
-    from mcp.server.fastmcp import FastMCP
-    mcp = FastMCP("test")
+    # Aísla el registro en una MCPServer nueva por test (no contamina el módulo global).
+    from mcp.server.mcpserver import MCPServer
+    mcp = MCPServer("test")
     srv.mcp = mcp
     srv._register_tools(client, ipc, market, is_testnet=is_testnet)
     return mcp._tool_manager

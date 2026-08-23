@@ -4,6 +4,26 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project adheres to
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+- **`mcp[cli]` 1.29.0 → 2.0.0.** `mcp.server.fastmcp.FastMCP` desaparecio; ahora es
+  `mcp.server.mcpserver.MCPServer`. Trampa del cambio: el 2do posicional pasó de
+  `instructions` a `title`, asi que un bump ingenuo dejaba `instructions=None` y la
+  doctrina dejaba de inyectarse en cada sesion, en silencio y sin romper ningun test.
+  Ahora va por nombre y hay una guarda que lo verifica.
+- **`ruff` 0.7.2 → 0.16.3** (pre-commit alineado al mismo pin). Pedia PEP 695 en
+  `run_guarded`: `def run_guarded[T](...)` en vez del `TypeVar` a nivel de modulo.
+- **`pytest` 8.3.3 → 9.1.1** junto con **`pytest-asyncio` 0.24.0 → 1.4.0**. Subir pytest
+  solo era irresoluble (`pytest-asyncio<9`): esa era la causa del PR rojo de dependabot.
+- `numpy` declarado explicitamente (extra `research` nuevo, fuera de las deps del server).
+
+### Added
+- `tests/integration/test_mcp_protocol.py`: handshake MCP real por stdio (initialize +
+  tools/list + resources/list + prompts/list + un `tools/call` contra la cuenta). Nada
+  probaba el producto como lo ve un cliente; ese hueco es justo el que dejaba pasar la
+  trampa de `instructions`.
+
 ## [1.2.1] — 2026-08-22
 
 - MCP Registry ownership marker (`mcp-name`) in the README (required by the registry's

@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from importlib import resources as _res
 
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
 from kainext_binance_mcp.knowledge import prompts as _prompts
 
@@ -38,15 +38,15 @@ def read_content(filename: str) -> str:
         encoding="utf-8")
 
 
-def register_knowledge(mcp: FastMCP) -> None:
+def register_knowledge(mcp: MCPServer) -> None:
     """Registra resources + prompts sobre la instancia dada.
 
     Mismo patrón que `_register_tools`: se llama desde `main()` (y desde los tests con
-    una FastMCP fresca). NO usar decoradores externos sobre las funciones registradas
-    (rompe la introspección de FastMCP — gotcha documentado en server.py).
+    una MCPServer fresca). NO usar decoradores externos sobre las funciones registradas
+    (rompe la introspección de MCPServer — gotcha documentado en server.py).
     """
     for uri, (filename, title) in _RESOURCES.items():
-        # OJO: la función NO puede tener parámetros (FastMCP la trataría como template).
+        # OJO: la función NO puede tener parámetros (MCPServer la trataría como template).
         # Se fija el filename con una factory para evitar el late-binding del loop.
         def _make_reader(fname: str):  # type: ignore[no-untyped-def]  # helper local
             def _reader() -> str:

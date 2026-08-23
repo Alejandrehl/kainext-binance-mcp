@@ -24,12 +24,12 @@ PYPROJECT = tomllib.loads((ROOT / "pyproject.toml").read_text(encoding="utf-8"))
 
 
 def _registered_tool_names() -> set[str]:
-    """Registra las tools en una FastMCP aislada (mismo patrón que test_server_tools)."""
-    from mcp.server.fastmcp import FastMCP
+    """Registra las tools en una MCPServer aislada (mismo patrón que test_server_tools)."""
+    from mcp.server.mcpserver import MCPServer
 
     previous = srv.mcp
     try:
-        srv.mcp = FastMCP("consistency")
+        srv.mcp = MCPServer("consistency")
         srv._register_tools(MagicMock(), MagicMock(), MagicMock(), is_testnet=True)
         return {t.name for t in srv.mcp._tool_manager.list_tools()}
     finally:
@@ -58,8 +58,11 @@ def test_version_is_identical_everywhere() -> None:
     assert set(in_server_json) == {version}, (version, in_server_json)
 
     changelog = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
-    top = re.search(r"^## \[([^\]]+)\]", changelog, re.M)
-    assert top and top[1] == version, (version, top[1] if top else None)
+    # `[Unreleased]` es practica estandar de Keep a Changelog: se salta y se compara
+    # contra la primera entrada VERSIONADA.
+    versioned = [h for h in re.findall(r"^## \[([^\]]+)\]", changelog, re.M)
+                 if h.lower() != "unreleased"]
+    assert versioned and versioned[0] == version, (version, versioned[:1])
 
 
 # ── 2/3/4. Los conteos del README describen lo que el servidor realmente expone ───────
@@ -107,7 +110,7 @@ def test_declared_scope_matches_what_the_package_ships() -> None:
     """Si el paquete trae el motor de futuros, ni la descripción ni `_INSTRUCTIONS`
     pueden seguir diciendo que esto es solo spot.
 
-    `_INSTRUCTIONS` no es documentación: FastMCP lo inyecta en TODA sesión de todo
+    `_INSTRUCTIONS` no es documentación: MCPServer lo inyecta en TODA sesión de todo
     cliente MCP. Dejarlo obsoleto le da reglas viejas a cada sesión de IA.
     """
     ships_futures = (ROOT / "src" / "kainext_binance_mcp" / "futures").is_dir()
@@ -115,6 +118,18 @@ def test_declared_scope_matches_what_the_package_ships() -> None:
         pytest.skip("el paquete aún no expone research de futuros")
     assert not _claims_spot_only(PYPROJECT["project"]["description"])
     assert not _claims_spot_only(srv._INSTRUCTIONS)
+
+
+def test_instructions_actually_reach_the_server_object() -> None:
+    """El texto tiene que llegar a `instructions`, no a `title`.
+
+    Trampa real del upgrade a mcp 2.0: en el FastMCP viejo el 2do posicional era
+    `instructions`; en `MCPServer` es `title`. Pasarlo posicional deja `instructions=None`
+    y la doctrina deja de inyectarse en CADA sesion, en silencio y sin que falle nada.
+    Ningun test lo miraba: por eso existe este.
+    """
+    assert srv.mcp.instructions == srv._INSTRUCTIONS
+    assert srv.mcp.title != srv._INSTRUCTIONS, "las instrucciones se fueron al title"
 
 
 def test_instructions_still_ground_the_client_in_the_doctrine() -> None:

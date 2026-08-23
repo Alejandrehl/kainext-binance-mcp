@@ -16,7 +16,7 @@ classifiers = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "mcp[cli]==1.29.0",
+    "mcp[cli]==2.0.0",
     "python-binance==1.0.37",
     "pydantic==2.13.4",
     "pandas==3.0.5",
@@ -31,7 +31,7 @@ research = ["numpy==2.5.2"]
 # `research` NO lo instala quien usa el servidor MCP. El CI sí lo instala, o `futures/`
 # no importaría y la cobertura de esos archivos caería a 0 (build rojo por la razón
 # equivocada).
-dev = ["pytest==8.3.3", "pytest-cov==7.1.0", "mypy==2.3.1", "ruff==0.7.2", "pytest-asyncio==0.24.0"]
+dev = ["pytest==9.1.1", "pytest-cov==7.1.0", "mypy==2.3.1", "ruff==0.16.3", "pytest-asyncio==1.4.0"]
 
 [project.urls]
 Homepage = "https://github.com/Alejandrehl/kainext-binance-mcp"

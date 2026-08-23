@@ -4,7 +4,6 @@ de una tool va mapeada + scrubbeada como ToolExecutionError — nunca un traceba
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TypeVar
 
 _CODE_MESSAGES: dict[int, str] = {
     -2010: "Order rejected: insufficient funds for this order.",
@@ -37,14 +36,11 @@ class ToolExecutionError(Exception):
     """Error de tool ya seguro para el modelo: mensaje mapeado + scrubbeado."""
 
 
-T = TypeVar("T")
-
-
-def run_guarded(secrets_of: Callable[[], list[str]], fn: Callable[[], T]) -> T:
+def run_guarded[T](secrets_of: Callable[[], list[str]], fn: Callable[[], T]) -> T:
     """Contrato de error único de las tools read-only. Ejecuta el cuerpo de la tool:
     cualquier excepción (python-binance, red, validación) sale como ToolExecutionError
     con el mensaje mapeado (map_binance_error) y scrubbeado (scrub_secrets). Se llama
-    DENTRO del shim (no como decorador): FastMCP introspecciona la firma del shim y un
+    DENTRO del shim (no como decorador): MCPServer introspecciona la firma del shim y un
     wrapper ajeno rompe la resolución de annotations. Las write tools no lo usan: su
     contrato es OrderProposal(error=ToolError) (two-phase, spec §3.2)."""
     try:
