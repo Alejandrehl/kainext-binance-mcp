@@ -6,23 +6,78 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-### Changed
-- **`mcp[cli]` 1.29.0 → 2.0.0.** `mcp.server.fastmcp.FastMCP` desaparecio; ahora es
-  `mcp.server.mcpserver.MCPServer`. Trampa del cambio: el 2do posicional pasó de
-  `instructions` a `title`, asi que un bump ingenuo dejaba `instructions=None` y la
-  doctrina dejaba de inyectarse en cada sesion, en silencio y sin romper ningun test.
-  Ahora va por nombre y hay una guarda que lo verifica.
-- **`ruff` 0.7.2 → 0.16.3** (pre-commit alineado al mismo pin). Pedia PEP 695 en
-  `run_guarded`: `def run_guarded[T](...)` en vez del `TypeVar` a nivel de modulo.
-- **`pytest` 8.3.3 → 9.1.1** junto con **`pytest-asyncio` 0.24.0 → 1.4.0**. Subir pytest
-  solo era irresoluble (`pytest-asyncio<9`): esa era la causa del PR rojo de dependabot.
-- `numpy` declarado explicitamente (extra `research` nuevo, fuera de las deps del server).
+The package stops being spot-only: it now also ships an **offline USD-M futures research
+engine**, and the doctrine that governs it changed accordingly.
 
 ### Added
-- `tests/integration/test_mcp_protocol.py`: handshake MCP real por stdio (initialize +
-  tools/list + resources/list + prompts/list + un `tools/call` contra la cuenta). Nada
-  probaba el producto como lo ve un cliente; ese hueco es justo el que dejaba pasar la
-  trampa de `instructions`.
+
+- **Futures research engine** (`kainext_binance_mcp.futures`, behind the new `[research]`
+  extra). Keyless and offline: it reads Binance's public archives with no API key, exposes
+  **no MCP tools**, and the server never imports it — a `uvx` install without the extra
+  starts exactly as before.
+  - `data.py` — historical panel from the monthly and daily archives, SHA256-verified,
+    resumable, cached outside iCloud. Handles three traps that corrupt silently: the CSV
+    header changed between eras (2020 files have none), the current month is missing from
+    the monthly archives, and today's candle is incomplete — lookahead in disguise.
+    `funding_interval_hours` is read from the data, not hardcoded to 8h.
+  - `universe.py` — point-in-time universe free of survivorship bias. 527 USDT perpetuals
+    trade today but the archive holds 986 symbols; **306 delisted USDT perps** are
+    recoverable. Denomination-multiplier symbols (`1000PEPE` and 12 others) are never
+    chained to their predecessor: a relisting would show as a +99,900% return and dominate
+    any momentum ranking.
+- **`tests/test_consistency.py`** — anti-drift gate. Fails the build when the docs stop
+  describing the product: version lockstep across `pyproject`/`server.json`/`CHANGELOG`,
+  README tool counts (total **and** per section), declared scope, and credentials in
+  `.mcp.json`.
+- **`tests/integration/test_mcp_protocol.py`** — real MCP handshake over stdio. Nothing
+  tested the product as a client sees it, which is exactly how the `instructions` trap below
+  could have shipped.
+- **`CLAUDE.md`, `ROADMAP.md`, `docs/architecture.md`, `docs/research/README.md`.**
+- **`.mcp.json` is now versioned**, declaring only remote OAuth servers. The blanket
+  gitignore was hope; the gate is verification.
+- **`funding_events`** on `DerivativesSnapshot` — funding history with its timestamps.
+  Additive: `funding_history` is unchanged for existing consumers.
+
+### Changed (behavior)
+
+- **The doctrine now has two regimes that never mix** (`kb://discipline`). Rules 1-6 govern
+  the long-term spot portfolio and are unchanged. New rule 7 governs systematic research,
+  where leverage is admissible **only** after clearing every condition: out-of-sample
+  validation corrected for multiple testing, rules written before execution, volatility
+  targeting, a drawdown circuit breaker, segregated capital, and a full decision record.
+  Discretionary directional leverage remains forbidden, explicitly. **Order execution is
+  still spot-only and human-gated.** `_INSTRUCTIONS` ships this to every MCP session.
+- **`mcp[cli]` 1.29.0 → 2.0.0.** `mcp.server.fastmcp.FastMCP` is gone; it is now
+  `mcp.server.mcpserver.MCPServer`. The trap: the second positional argument changed from
+  `instructions` to `title`, so a naive bump left `instructions=None` and silently stopped
+  injecting the doctrine into every session while all tests still passed.
+- `ruff` 0.7.2 → 0.16.3 (pre-commit aligned to the same pin); required PEP 695 generics in
+  `run_guarded`. `pytest` 8.3.3 → 9.1.1 **with** `pytest-asyncio` 0.24.0 → 1.4.0 — bumping
+  pytest alone was unresolvable.
+- Zero-warnings gate: `filterwarnings = ["error"]`. Every ignore names its upstream cause.
+
+### Fixed
+
+- **`Decimal` never serialises as scientific notation.** Binance returns `"0.00000000"` for
+  a zero `locked`; `str(Decimal("0.00000000"))` is `"0E-8"`, which the auto-generated output
+  schema rejects — so `binance_get_balance` failed on a normal wallet. This affected **all
+  47 `Decimal` fields**, not one tool. Fixed once, as a policy, in `models.py`.
+- Orphan `asyncio` event loop from `python-binance` broke only the py3.12 CI cells: on 3.12
+  `get_event_loop()` creates a loop nobody closes; on 3.13 it does not. Non-deterministic,
+  so a green local run proved nothing.
+
+### Internal
+
+- One backtest engine. `examples/walk_forward.py` had a hand-written second implementation
+  of `backtest.simulate`; a differential test proved they agreed exactly — so the published
+  research stands — and `sim_window` now delegates. Measured cost: ~2 s over the full
+  walk-forward.
+- Removed `scripts/smoke_dialog_testnet.py`: a near-identical duplicate of the `examples/`
+  copy, referenced by nothing, unlinted by CI, and touching the trade key path.
+- Documentation caught up with the product: README scope, section counts (declared 23 while
+  the header said 25), the doctrine row that still said "never leverage", the macOS-only
+  execution claim (false since v1.2), stale `@v1.0.0` install pins, `CONTRIBUTING`'s ruff
+  command that did not match CI, and the `server.json` registry listing.
 
 ## [1.2.1] — 2026-08-22
 

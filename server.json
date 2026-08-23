@@ -1,8 +1,8 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.Alejandrehl/kainext-binance-mcp",
-  "title": "Binance Spot (security-first) + crypto analyst",
-  "description": "Security-first Binance Spot MCP + honest crypto analyst. 25 tools, 5 prompts, human-gated orders.",
+  "title": "Binance (security-first) + crypto analyst",
+  "description": "Security-first Binance MCP + honest crypto analyst. 25 tools, 5 prompts, human-gated spot orders, offline futures research.",
   "version": "1.2.1",
   "websiteUrl": "https://github.com/Alejandrehl/kainext-binance-mcp",
   "packages": [

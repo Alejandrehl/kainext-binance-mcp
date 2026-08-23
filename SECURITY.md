@@ -20,7 +20,7 @@ a fully-compromised model **cannot move funds on its own**.
   (`BINANCE_TRADE_*`), and you launch it yourself in your own shell. The trade key is never
   passed to the MCP server or to the AI client's environment.
 - **Human-in-the-loop for every irreversible action.** No order or cancellation executes
-  without a **physical click** on a native confirmation dialog that shows the *exact*
+  without a **physical click** on a confirmation surface that shows the *exact*
   canonical fields about to be sent. The default button is **Cancel**.
 - **Re-validation at the boundary.** The confirmer re-validates every proposal against the
   live symbol filters before execution — it does not trust the fields it received.
@@ -55,6 +55,17 @@ potential impact. Thank you for helping keep users' funds safe.
 ## Supported versions
 
 This project is pre-1.0 and evolving. Security fixes target the latest `main`.
+
+## Note on the futures research engine
+
+`kainext_binance_mcp.futures` is **keyless by construction**. It reads Binance's public
+archives (`data.binance.vision`) over plain HTTP with **no API key header at all** — strictly
+less exposed than the signed spot path below. It has **no code path that could place,
+cancel, or propose an order**, exposes no MCP tools, and the server never imports it.
+
+One footprint worth naming: it **caches downloaded archives to disk**, by default under
+`~/.cache/kainext-futures/` (override with `KAINEXT_FUTURES_DATA_DIR`). The cache holds
+public market data only — no account data, no credentials.
 
 ## Note on public futures endpoints (v1.1+)
 

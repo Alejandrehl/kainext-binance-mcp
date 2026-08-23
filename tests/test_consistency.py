@@ -8,6 +8,7 @@ La única defensa que funciona es que el build caiga. Este archivo es esa defens
 """
 from __future__ import annotations
 
+import json
 import re
 import tomllib
 from pathlib import Path
@@ -98,7 +99,52 @@ def test_resources_are_consistent_across_registry_files_and_readme() -> None:
     assert len(_RESOURCES) == _readme_counts()["resources"]
 
 
-# ── 5. El alcance declarado no contradice lo que el paquete expone ────────────────────
+def test_readme_section_counts_add_up_to_the_total() -> None:
+    """Cada `### Seccion (N · …)` declara su propio conteo. Tienen que sumar el total.
+
+    Drift real encontrado el 23-08-2026: la seccion Analyst declaraba 5 y su tabla tenia 7
+    filas, asi que las secciones sumaban 23 mientras el encabezado decia 25. El gate no lo
+    cazaba porque solo validaba el total y que cada tool tuviera alguna fila.
+    """
+    declared = [int(n) for _name, n in re.findall(r"^### (.+?) \((\d+) ·", README, re.M)]
+    assert declared, "el README ya no declara conteos por seccion"
+    header_total = int(re.search(r"^## Tools \((\d+)\)", README, re.M)[1])
+    rows = len(re.findall(r"^\| *`binance_[a-z0-9_]+`", README, re.M))
+    assert sum(declared) == header_total == rows == len(_registered_tool_names()), (
+        f"secciones suman {sum(declared)}, encabezado dice {header_total}, "
+        f"filas {rows}, tools registradas {len(_registered_tool_names())}"
+    )
+
+
+# ── 5. `.mcp.json` no puede llevar credenciales ───────────────────────────────────────
+
+# 40+ caracteres alfanumericos seguidos: la forma de una API key de Binance.
+_KEY_SHAPED = re.compile(r"[A-Za-z0-9]{40,}")
+_SECRET_WORDS = re.compile(r'"(api_?key|secret|token|password)"\s*:\s*"[^"]+"', re.I)
+
+
+def test_mcp_json_never_carries_credentials() -> None:
+    """`.mcp.json` se versiona en un repo PUBLICO: el gate reemplaza al gitignore ciego.
+
+    Antes el archivo estaba gitignoreado entero, lo que impedia declarar MCPs remotos
+    (Linear, Context7) que no tienen secreto alguno. Un ignore es esperanza; esto es
+    verificacion: si alguien pega una key aca, el build cae antes del push.
+    """
+    path = ROOT / ".mcp.json"
+    if not path.exists():
+        pytest.skip("el repo no declara MCPs")
+    raw = path.read_text(encoding="utf-8")
+    config = json.loads(raw)
+
+    for name, server in config.get("mcpServers", {}).items():
+        assert not server.get("env"), f"{name} declara un bloque `env` — las claves van al shell"
+
+    assert not _SECRET_WORDS.search(raw), "hay un campo con pinta de credencial"
+    long_tokens = [m for m in _KEY_SHAPED.findall(raw) if not m.startswith(("http", "mcp"))]
+    assert not long_tokens, f"cadenas con forma de API key: {long_tokens}"
+
+
+# ── 6. El alcance declarado no contradice lo que el paquete expone ────────────────────
 
 def _claims_spot_only(text: str) -> bool:
     """Dice 'spot' sin nombrar futuros: promete un alcance que ya no es el real."""

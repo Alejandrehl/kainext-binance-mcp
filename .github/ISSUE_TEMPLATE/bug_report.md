@@ -4,7 +4,7 @@ about: Something is broken
 labels: bug
 ---
 
-**Environment**: testnet / mainnet · macOS version · Python version
+**Environment**: testnet / mainnet · OS and version · Python version
 
 **What happened**
 

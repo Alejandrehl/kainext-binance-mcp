@@ -5,7 +5,9 @@ __pycache__/
 .mypy_cache/
 .coverage
 dist/
-# Hardening: jamás versionar secretos ni config con secretos
-.mcp.json
+# Hardening: jamás versionar secretos ni config con secretos.
+# `.mcp.json` SÍ se versiona: solo declara MCPs remotos con OAuth, sin bloques `env`.
+# El que lo mantiene honesto no es este archivo — es `tests/test_consistency.py`, que
+# rompe el build si aparece cualquier cosa que parezca una credencial.
 .env
 *.local

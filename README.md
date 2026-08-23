@@ -8,7 +8,7 @@
 [![Downloads](https://img.shields.io/pypi/dm/kainext-binance-mcp.svg)](https://pypi.org/project/kainext-binance-mcp/)
 [![Typed: mypy strict](https://img.shields.io/badge/typed-mypy%20strict-blue.svg)](pyproject.toml)
 
-> **Let an AI assistant read Binance spot markets, analyze them, and *propose* real-money
+> **Let an AI assistant read Binance markets, analyze them, and *propose* real-money
 > trades — while a separate, human-gated process is the only thing that can ever execute.
 > The model never holds a trade key, and nothing moves without a physical click.**
 
@@ -19,12 +19,13 @@
 </p>
 
 `kainext-binance-mcp` is a [Model Context Protocol](https://modelcontextprotocol.io/) server
-that connects any MCP client (Claude Code, Claude Desktop, …) to a Binance **spot** account.
+that connects any MCP client (Claude Code, Claude Desktop, …) to a Binance account.
 It exposes **25 tools**, **5 analyst prompts** and **8 knowledge resources** spanning live
 market data, technical indicators, news & sentiment, derivatives positioning, market
 structure, portfolio/risk analytics, transparent trading signals, and **two-phase order
 execution with a human in the loop** — a complete, honest crypto analysis consultant in
-one install.
+one install. It also ships an **offline USD-M futures research engine** (no tools, no keys,
+no network at import time) — see [Futures research](#futures-research).
 
 It is built around one uncompromising idea: **treat the language model as untrusted.** Even a
 fully prompt-injected or malfunctioning model cannot move your funds, because it has neither
@@ -46,7 +47,7 @@ LLM agents are great at *reasoning about* markets and terrible at being *trusted
 irreversible, money-moving actions. Most "AI trading" tooling hands the model an API key and
 hopes for the best. This project takes the opposite stance: the AI gets rich, read-only
 context and a way to **propose** an action, but a **human holds the trigger** and a
-**separate process holds the key**. You get the upside of an AI co-pilot for spot trading
+**separate process holds the key**. You get the upside of an AI co-pilot for your trading
 without surrendering custody or control.
 
 ## Security model — the headline feature
@@ -130,7 +131,7 @@ physical click. The model has neither. Defense in depth on top of that:
 | `binance_scan_signals` | Signals for a watchlist, ranked by score | `symbols`, `interval?` |
 | `binance_backtest_signal` | Backtest the composite technical signal (no lookahead, sentiment=0) | `symbol`, `interval?`, `limit?`, `threshold?` |
 
-### Analyst — layers 5/6 (5 · read key + free public APIs · 100% read-only)
+### Analyst — layers 5/6 (7 · read key + free public APIs · 100% read-only)
 
 | Tool | What it does | Params |
 |---|---|---|
@@ -142,7 +143,7 @@ physical click. The model has neither. Defense in depth on top of that:
 | `binance_backtest_dca` | Backtests a mechanical DCA plan on real history — invested, PNL, honest lump-sum comparison, max drawdown | `symbol`, `monthly_quote`, `months`, `day_of_month?`, `fee?` |
 | `binance_backtest_harvest` | Backtests a pre-committed harvest grid (one fire per level, upward daily-close crossings) vs pure hold | `symbol`, `initial_qty`, `grid`, `start?` |
 
-### Write — two-phase (4 · spot only · the server never executes)
+### Write — two-phase (4 · **execution is spot-only** · the server never executes)
 
 | Tool | What it does | Params |
 |---|---|---|
@@ -165,7 +166,7 @@ its methodology through the two MCP surfaces most servers ignore:
 
 | Resource | What it teaches |
 |---|---|
-| `kb://discipline` | The operating doctrine: DCA > timing, position sizing, never leverage, cold-blooded exit rules, net break-even |
+| `kb://discipline` | The operating doctrine in two regimes that never mix: rules 1-6 govern the long-term spot portfolio (DCA > timing, position sizing, no leverage); rule 7 governs systematic research, where leverage is admissible only after clearing every condition |
 | `kb://research/no-edge` | Our own walk-forward research: 0/36 configurations with a robust edge — why signals are context, not alpha |
 | `kb://sources` | Curated source registry **with each source's bias annotated**, including where to read ETF flows |
 | `kb://frameworks/news-analysis` | Separating signal from noise: primary vs derivative, flows/rules/structure |
@@ -179,9 +180,31 @@ as slash commands): `portfolio_review`, `asset_thesis`, `market_briefing`, `risk
 `dca_plan`. Every playbook grounds itself in `kb://discipline` first, and the server's
 instructions tell clients to read the doctrine before giving any investment analysis.
 
+## Futures research
+
+An **offline USD-M futures research engine** lives in `kainext_binance_mcp.futures`, behind
+the `[research]` extra. It is deliberately **not** an MCP surface:
+
+- **No tools, no prompts, no resources.** Nothing about it reaches the model.
+- **Keyless.** It reads Binance's public archives (`data.binance.vision`) with no API key at
+  all — strictly less exposed than the signed spot path.
+- **Never imported by the server.** Install without `[research]` and the server starts fine.
+- **Execution stays spot-only.** This engine researches; it cannot place an order.
+
+What it does today: builds a survivorship-bias-free panel of USD-M perpetuals from the
+public archives — **986 symbols, of which 306 USDT perps are already delisted** — with
+point-in-time universe membership derived from the data itself. Three archive traps are
+handled explicitly and documented in `futures/data.py`: the CSV header changed between eras
+(2020 files have none), the current month is missing from the monthly archives, and today's
+candle is incomplete, which is lookahead in disguise.
+
+The doctrine that governs it is `kb://discipline` rule 7 — leverage is admissible only
+inside a systematic strategy that has cleared every condition. See
+[`ROADMAP.md`](ROADMAP.md) and [`docs/architecture.md`](docs/architecture.md).
+
 ## Quickstart
 
-**Prerequisites:** Python 3.12+, [uv](https://docs.astral.sh/uv/), and (for execution) macOS.
+**Prerequisites:** Python 3.12+ and [uv](https://docs.astral.sh/uv/). Execution works on every OS — see [Confirmation backends](#confirmation-backends).
 
 ### 1. Create the API key(s) on Binance
 
@@ -230,7 +253,7 @@ Go to Binance → **API Management**. The design uses two keys for least privile
 server aborts with a clear message — export the variables before launching your client.
 
 Installing from git instead of PyPI? Use `"args": ["--from",
-"git+https://github.com/Alejandrehl/kainext-binance-mcp@v1.0.0", "kainext-binance-mcp"]`
+"git+https://github.com/Alejandrehl/kainext-binance-mcp@v1.2.1", "kainext-binance-mcp"]`
 (pin a tag; `git+https` works without any GitHub credentials).
 
 ### 4. Run the confirmer (required to execute)
@@ -242,7 +265,7 @@ export BINANCE_ENV=testnet
 export BINANCE_TRADE_API_KEY="...your trade key..."
 export BINANCE_TRADE_API_SECRET="...your trade secret..."
 
-uvx kainext-binance-mcp-confirmer  # or: uvx --from "git+https://github.com/Alejandrehl/kainext-binance-mcp@v1.0.0" kainext-binance-mcp-confirmer
+uvx kainext-binance-mcp-confirmer  # or: uvx --from "git+https://github.com/Alejandrehl/kainext-binance-mcp@v1.2.1" kainext-binance-mcp-confirmer
 ```
 
 It listens on a local Unix socket. When the AI proposes an order, a **native dialog** appears
@@ -298,23 +321,35 @@ Requires Python 3.12+ and `uv`. See [CONTRIBUTING.md](CONTRIBUTING.md) for detai
 
 ```bash
 uv venv --python 3.12
-uv pip install -e ".[dev]"
+uv pip install -e ".[dev,research]"       # `research` is what CI installs
 
 uv run ruff check src/ tests/ examples/   # lint (the release gate)
 uv run mypy                               # strict type checking
-uv run pytest -q                          # tests + coverage (hard gate: 90% min)
+uv run pytest -q                          # coverage >= 90% AND zero warnings
 ```
 
+Without the `research` extra `numpy` is missing, `futures/` will not import, and your local
+run silently diverges from CI.
+
 The unit suite runs fully offline. Integration tests (`-m integration`) hit Binance testnet
-and skip cleanly without keys; the news test hits live RSS only with `RUN_NETWORK_TESTS=1`.
+and skip cleanly without keys; the news test hits live RSS only with `RUN_NETWORK_TESTS=1`,
+and `tests/integration/test_mcp_protocol.py` speaks the real MCP handshake over stdio.
+
+Two gates surprise people. **`tests/test_consistency.py`** fails the build when the docs stop
+describing the product — version lockstep, tool counts (total *and* per section), and the
+declared scope. **`filterwarnings = ["error"]`** means any new warning is a build failure;
+the existing ignores name their upstream cause.
 CI runs lint + types + tests on ubuntu **and** macOS (the confirmer's target OS) across
 Python 3.12/3.13, plus `pip-audit` and CodeQL, on every push and PR. `pre-commit install`
 gets you the same ruff check locally.
 
 ## Roadmap
 
-- Migrate to MCP SDK 2.x (v1.0.0 pins `mcp==1.29.0`; 2.0 is a breaking API change).
-- Additional order types and exchange surfaces beyond spot.
+See [`ROADMAP.md`](ROADMAP.md) for the full three-phase programme and its measured state.
+
+- ~~Migrate to MCP SDK 2.x~~ — **done**, `mcp[cli]==2.0.0`.
+- ~~Exchange surfaces beyond spot~~ — **futures research shipped** (read-only, offline).
+  Futures *execution* is deliberately out of scope: see [`SECURITY.md`](SECURITY.md).
 - Optional notification channels for proposal/execution events.
 
 ## Research: is there an edge?
@@ -326,6 +361,10 @@ showed a robust out-of-sample edge**; in-sample "edges" were overfitting.
 
 That is why every signal tool ships with a disclaimer: the signals are **context, not alpha**.
 Full write-ups and reproducible scripts: [`docs/research/`](docs/research/) + [`examples/`](examples/).
+
+The futures engine holds itself to the same bar, plus corrections for multiple testing
+(Deflated Sharpe Ratio, probability of backtest overfitting) — because the more
+configurations you try, the more certain you are to find beautiful noise.
 
 ## Disclaimer
 

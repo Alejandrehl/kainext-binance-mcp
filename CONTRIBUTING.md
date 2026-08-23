@@ -9,8 +9,11 @@ codebase that handles real money, so the bar for changes is deliberately high.
 - **Security first.** Any change that touches the read/trade key boundary, the confirmer, the
   IPC channel, or the order-execution path gets extra scrutiny. When in doubt, open an issue
   first.
-- **Never commit secrets.** `.env` and `.mcp.json` are git-ignored. Keep credentials in your
-  shell, never in the repo.
+- **Never commit secrets.** `.env` is git-ignored; credentials live in your shell, never in
+  the repo. `.mcp.json` **is** versioned but may only declare remote OAuth servers —
+  `tests/test_consistency.py` fails the build if anything credential-shaped appears in it.
+- **The futures package stays keyless.** `kainext_binance_mcp.futures` must never import a
+  client or read an API key: it reads public archives only, and the server never imports it.
 
 ## Development setup
 
@@ -20,7 +23,7 @@ Requires Python 3.12+ and [uv](https://docs.astral.sh/uv/).
 git clone git@github.com:Alejandrehl/kainext-binance-mcp.git
 cd kainext-binance-mcp
 uv venv --python 3.12
-uv pip install -e ".[dev]"
+uv pip install -e ".[dev,research]"
 ```
 
 ## Quality gates (must pass before a PR is mergeable)
@@ -28,9 +31,9 @@ uv pip install -e ".[dev]"
 These run in CI on every push and pull request, and mirror what you should run locally:
 
 ```bash
-uv run ruff check src/     # lint
+uv run ruff check src/ tests/ examples/   # lint — same paths CI uses
 uv run mypy                # strict type checking
-uv run pytest -q           # tests + coverage (gate: --cov-fail-under=90, lives in pyproject)
+uv run pytest -q           # coverage >= 90% AND zero warnings (both in pyproject)
 ```
 
 The unit suite runs fully offline. Integration tests (`-m integration`) hit Binance testnet
