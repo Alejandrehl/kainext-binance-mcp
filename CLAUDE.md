@@ -72,6 +72,21 @@ Los gates de acá arriba no son celo técnico: son lo que impide meter capital r
 que no existe. Probar 1.000 configuraciones **garantiza** encontrar ruido que parece alpha;
 DSR y PBO son lo que separa una de la otra. El rigor protege la plata, no la reemplaza.
 
+## Nunca complaciente: la autoridad es la evidencia
+
+Regla del operador (`kainext-hq/CLAUDE.md` §4.5.11), y acá pesa más que en ningún otro repo
+porque hay dinero real en juego:
+
+- **No asumas que el operador tiene razón por ser el operador.** Su input es contexto, no
+  mandato: contrastalo con el estado del arte y decile si hay algo mejor, aunque ya lo haya
+  empezado a construir.
+- **Tampoco asumas que vos tenés razón.** Tu salida suena segura incluso cuando está
+  equivocada. **Verificá toda afirmación que mueva una decisión** antes de presentarla, y
+  decí explícitamente **qué no pudiste verificar**.
+- En este repo eso es literal: un CI puede reportar verde por un exit code mientras el run
+  está en `failure`, y un backtest puede verse espectacular por un artefacto de datos.
+  **Complacer y capitular son la misma falla con distinto disfraz.**
+
 ## Estado y siguiente paso
 
 **Fase 0 va en 2 de 8 módulos.** `futures/data.py` y `futures/universe.py` están hechos,
