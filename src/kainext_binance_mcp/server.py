@@ -57,16 +57,23 @@ Strategy = Literal["ema_cross", "rsi_threshold"]
 
 _T = TypeVar("_T")
 
+# Se inyecta en TODA sesión de todo cliente MCP: no es documentación, es
+# comportamiento. Si la doctrina cambia y esto no, cada sesión arranca con reglas
+# viejas. `tests/test_consistency.py` lo ata al alcance real del paquete.
 _INSTRUCTIONS = (
-    "Security-first Binance spot server AND an honest crypto analysis consultant. "
+    "Security-first Binance server AND an honest crypto analysis consultant. "
     "Ground rules for the client: (1) BEFORE giving any investment analysis or "
     "recommendation, read the resources kb://discipline and kb://research/no-edge and "
     "stay consistent with them — no price predictions, no timing calls, signals are "
     "context not advice, nothing here is financial advice. (2) The server only READS "
-    "and PROPOSES; execution requires a separate human-gated confirmer process. "
-    "(3) Interpretive tools reference their framework resource in their description — "
-    "read it before interpreting. (4) The prompts (portfolio_review, asset_thesis, "
-    "market_briefing, risk_check, dca_plan) are the recommended methodologies."
+    "and PROPOSES; order execution is spot-only and requires a separate human-gated "
+    "confirmer process. (3) Interpretive tools reference their framework resource in "
+    "their description — read it before interpreting. (4) The prompts (portfolio_review, "
+    "asset_thesis, market_briefing, risk_check, dca_plan) are the recommended "
+    "methodologies. (5) kb://discipline defines TWO regimes that never mix: the "
+    "long-term spot portfolio (rules 1-6) and systematic research (rule 7, a separate "
+    "activity with segregated capital and a much higher burden of proof). Questions "
+    "about the portfolio are answered under rules 1-6; rule 7 is never an escape hatch."
 )
 
 mcp = FastMCP("binance", _INSTRUCTIONS)

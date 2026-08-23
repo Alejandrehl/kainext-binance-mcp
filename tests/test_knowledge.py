@@ -42,6 +42,24 @@ def test_discipline_and_no_edge_carry_the_doctrine() -> None:
     assert "0 of 36" in n and "walk-forward" in n and "not alpha" in n
 
 
+def test_discipline_keeps_the_two_regimes_separate() -> None:
+    """La doctrina permite apalancamiento SOLO dentro de research sistematico validado.
+
+    Lo que hace defendible esa apertura es la separacion: capital segregado, reglas
+    escritas antes, correccion por multiple testing y circuit breaker. Si una edicion
+    futura borra la separacion, queda una doctrina que dice "apalancate" sin condiciones
+    — que es justo lo que no debe pasar.
+    """
+    d = read_content("discipline.md").lower()
+    assert "two regimes" in d, "se perdio la separacion explicita entre portafolio y research"
+    # El veto al apalancamiento discrecional NO se relaja.
+    assert "discretionary directional leverage" in d
+    # Y las condiciones duras siguen nombradas.
+    for condition in ("out-of-sample", "multiple testing", "circuit breaker",
+                      "segregated capital", "volatility targeting"):
+        assert condition in d, f"la doctrina ya no exige: {condition}"
+
+
 def test_prompts_register_and_render() -> None:
     m = _fresh()
     prompts = {p.name for p in asyncio.run(m.list_prompts())}

@@ -28,6 +28,18 @@ publish the result, because an honest consultant leads with its own limitations.
 3. The reliable levers are behavioral: position sizing, DCA, harvesting into strength,
    and not losing more (`kb://discipline`).
 
+## The same standard applies to everything we test next
+
+This result is why the bar moved up rather than down. Any future strategy — including
+leveraged and market-neutral ones — has to clear a *stricter* gate than these 36 did:
+walk-forward on unseen windows, net of fees, funding and slippage, plus a correction for
+multiple testing (Deflated Sharpe Ratio, probability of backtest overfitting). Those
+corrections exist because the more configurations you try, the more certain you are to
+find something that looks like alpha and is **not alpha**.
+
+Results get published here whether they work or not. A research programme that only
+reports its winners is marketing with extra steps.
+
 Reproducible scripts and full result tables live in the repository:
 `docs/research/walk_forward_results.md`, `docs/research/experiment_results_matrix.md`,
 `examples/walk_forward.py`, `examples/experiment_matrix.py`.
