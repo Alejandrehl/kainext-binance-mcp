@@ -314,6 +314,17 @@ def validate_symbol(symbol: str) -> str:
 # Precios en Decimal (E3); ratios/métricas en float; campos degradables en None + notes.
 
 
+class FundingEvent(BaseModel):
+    """Una liquidación de funding, con su hora.
+
+    El wrapper anterior aplanaba el histórico a `list[float]` y tiraba `fundingTime`, lo
+    que dejaba la serie inservible como serie temporal: sin hora no se puede alinear el
+    accrual con las velas ni saber si faltan ventanas.
+    """
+    funding_time: int
+    funding_rate: float
+
+
 class DerivativesSnapshot(BaseModel):
     """Termómetro de apalancamiento de un par (endpoints PÚBLICOS de futures, sin firma).
 
@@ -326,6 +337,7 @@ class DerivativesSnapshot(BaseModel):
     last_funding_rate: float
     next_funding_time: int
     funding_history: list[float]
+    funding_events: list[FundingEvent] = []
     open_interest: PlainDecimal
     as_of: int
     disclaimer: str
