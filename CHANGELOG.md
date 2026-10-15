@@ -9,6 +9,22 @@ All notable changes to this project are documented here. The format follows
 The package stops being spot-only: it now also ships an **offline USD-M futures research
 engine**, and the doctrine that governs it changed accordingly.
 
+### Security
+
+- **The documented confirmer command could run a squatted package with your trade key.**
+  The README started the confirmer with `uvx kainext-binance-mcp-confirmer`. That is a
+  command inside the `kainext-binance-mcp` distribution, not a PyPI project, so `uvx` would
+  have fetched whatever anyone registered under that name — into the only process that holds
+  the trade key. The docs now always use `uvx --from "kainext-binance-mcp==<version>"`
+  (same for `kainext-binance-mcp-watch`), and `tests/test_consistency.py` fails the build if
+  any documented `uvx` command resolves a name that isn't this distribution, or if the pinned
+  versions drift from `pyproject`. Reported by Presend. **The PyPI page of 1.2.1 still shows
+  the old command until the next release.**
+- **Release can't publish an unverified commit.** `release.yml` now runs ruff, mypy and the
+  test suite, and checks that the tag equals the `pyproject` version, before the publish job.
+- **GitHub Actions pinned to commit SHAs** (Dependabot keeps them current) and checkouts no
+  longer persist the token.
+
 ### Added
 
 - **Futures research engine** (`kainext_binance_mcp.futures`, behind the new `[research]`
@@ -65,6 +81,10 @@ engine**, and the doctrine that governs it changed accordingly.
 - Orphan `asyncio` event loop from `python-binance` broke only the py3.12 CI cells: on 3.12
   `get_event_loop()` creates a loop nobody closes; on 3.13 it does not. Non-deterministic,
   so a green local run proved nothing.
+- `SECURITY.md` and `docs/architecture.md` no longer describe the project as pre-1.0, say
+  `.mcp.json` is git-ignored (it has been versioned since this cycle), or say the futures
+  archives are fetched over plain HTTP (they are fetched over HTTPS).
+- README watch-mode setup no longer assumes a cloned repo and an installed command.
 
 ### Internal
 

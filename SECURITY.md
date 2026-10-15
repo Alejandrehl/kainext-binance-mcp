@@ -40,7 +40,14 @@ confirmer process) **and** your physical click. The model has neither.
 - **Create two distinct API keys** with the minimum permissions described in the README
   (read-only for the server; trade-only + IP whitelist for the confirmer).
 - **Start on testnet.** Verify the full flow with fake money before touching mainnet.
-- **Keep secrets out of git.** `.env` and `.mcp.json` are git-ignored; keep them that way.
+- **Launch the confirmer from this distribution only.** Use
+  `uvx --from "kainext-binance-mcp==<version>" kainext-binance-mcp-confirmer` (or a
+  pinned `git+https` tag). The confirmer is a command inside `kainext-binance-mcp`; there is
+  no PyPI project of its own, so a bare `uvx kainext-binance-mcp-confirmer` would fetch
+  whatever someone registers under that name — into the process that holds your trade key.
+- **Keep secrets out of git.** `.env` is git-ignored, and credentials live in your shell.
+  This repo's own `.mcp.json` is versioned but may only declare remote OAuth servers; your
+  personal MCP config with `${VAR}` placeholders belongs outside any repository.
 
 ## Reporting a vulnerability
 
@@ -54,13 +61,13 @@ potential impact. Thank you for helping keep users' funds safe.
 
 ## Supported versions
 
-This project is pre-1.0 and evolving. Security fixes target the latest `main`.
+Security fixes target the latest release and `main`. Older releases are not patched; upgrade.
 
 ## Note on the futures research engine
 
 `kainext_binance_mcp.futures` is **keyless by construction**. It reads Binance's public
-archives (`data.binance.vision`) over plain HTTP with **no API key header at all** — strictly
-less exposed than the signed spot path below. It has **no code path that could place,
+archives (`data.binance.vision`) over unauthenticated HTTPS with **no API key header at
+all** — strictly less exposed than the signed spot path below. It has **no code path that could place,
 cancel, or propose an order**, exposes no MCP tools, and the server never imports it.
 
 One footprint worth naming: it **caches downloaded archives to disk**, by default under
