@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import re
+import shlex
 import tomllib
 from pathlib import Path
 from unittest.mock import MagicMock
@@ -182,3 +183,77 @@ def test_instructions_still_ground_the_client_in_the_doctrine() -> None:
     """Cambie lo que cambie el alcance, el grounding en la doctrina no se puede perder."""
     assert "kb://discipline" in srv._INSTRUCTIONS
     assert "kb://research/no-edge" in srv._INSTRUCTIONS
+
+
+# ── 7. Ningún comando documentado resuelve un nombre que no es nuestro en PyPI ────────
+
+_DIST = PYPROJECT["project"]["name"]
+_SCRIPTS = set(PYPROJECT["project"]["scripts"])
+_REPO_GIT = "git+https://github.com/Alejandrehl/kainext-binance-mcp@"
+_DOCS = [
+    ROOT / name
+    for name in ("README.md", "SECURITY.md", "CONTRIBUTING.md", "ROADMAP.md", "CLAUDE.md")
+] + sorted((ROOT / "docs").rglob("*.md"))
+_FENCE = re.compile(r"^```[^\n]*\n(.*?)^```", re.M | re.S)
+_ARGS_LIST = re.compile(r'"args"\s*:\s*\[([^\]]*)\]', re.S)
+
+
+def _is_our_dist_spec(spec: str) -> bool:
+    """`--from` tiene que apuntar a NUESTRA distribución (PyPI o el repo con tag)."""
+    return spec == _DIST or spec.startswith((f"{_DIST}==", f"{_DIST}[", _REPO_GIT))
+
+
+def _uvx_problems(tokens: list[str], where: str) -> list[str]:
+    if tokens[:1] == ["--from"]:
+        if len(tokens) < 3 or not _is_our_dist_spec(tokens[1]) or tokens[2] not in _SCRIPTS:
+            return [f"{where}: `uvx {' '.join(tokens)}`"]
+        return []
+    # Sin `--from`, uvx busca en PyPI un PROYECTO con ese nombre. Solo el de la
+    # distribución existe; cualquier otro entry point es un nombre squatteable.
+    if not tokens or tokens[0] != _DIST:
+        return [f"{where}: `uvx {' '.join(tokens)}` — falta --from {_DIST}"]
+    return []
+
+
+def test_documented_uvx_commands_never_resolve_a_squattable_name() -> None:
+    """`uvx <entry-point>` sin `--from` le pide a PyPI un proyecto con ESE nombre.
+
+    Hallazgo real (reportado externamente, 10-2026): el README lanzaba el confirmer con
+    `uvx kainext-binance-mcp-confirmer`, un nombre que no existe en PyPI. Cualquiera que
+    lo registrara corría su código en el único proceso que tiene la trade key. El
+    confirmer es un script DENTRO de `kainext-binance-mcp`; sin `--from` no se instala.
+    """
+    problems: list[str] = []
+    for path in _DOCS:
+        if not path.exists():
+            continue
+        text = path.read_text(encoding="utf-8")
+        rel = path.relative_to(ROOT)
+        for block in _FENCE.findall(text):
+            for line in block.splitlines():
+                cmd = line.lstrip("# ").strip()
+                if cmd.startswith("uvx "):
+                    tokens = shlex.split(cmd.split(" #", 1)[0])[1:]
+                    problems += _uvx_problems(tokens, str(rel))
+        for args in _ARGS_LIST.findall(text):
+            problems += _uvx_problems(re.findall(r'"([^"]+)"', args), str(rel))
+    assert not problems, "comandos uvx que resuelven un nombre ajeno:\n" + "\n".join(problems)
+
+
+def test_the_gate_catches_a_bare_entry_point() -> None:
+    """El gate de arriba no sirve si no reconoce el caso que lo motivó."""
+    assert _uvx_problems(["kainext-binance-mcp-confirmer"], "x")
+    assert _uvx_problems(
+        ["--from", "kainext-binance-mcp-confirmer", "kainext-binance-mcp-confirmer"], "x"
+    )
+    assert _uvx_problems(["--from", "evil-pkg", "kainext-binance-mcp-confirmer"], "x")
+    assert not _uvx_problems(["--from", f"{_DIST}==1.0.0", "kainext-binance-mcp-confirmer"], "x")
+    assert not _uvx_problems([_DIST], "x")
+
+
+def test_documented_version_pins_match_the_package_version() -> None:
+    """Los comandos del README fijan la versión: tienen que moverse con cada release."""
+    version = PYPROJECT["project"]["version"]
+    pins = re.findall(rf"{re.escape(_DIST)}(?:==|@v|/v)(\d+\.\d+\.\d+)", README)
+    assert pins, "el README dejó de fijar versión en sus comandos"
+    assert set(pins) == {version}, (version, sorted(set(pins)))

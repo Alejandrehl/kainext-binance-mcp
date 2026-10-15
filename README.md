@@ -265,8 +265,16 @@ export BINANCE_ENV=testnet
 export BINANCE_TRADE_API_KEY="...your trade key..."
 export BINANCE_TRADE_API_SECRET="...your trade secret..."
 
-uvx kainext-binance-mcp-confirmer  # or: uvx --from "git+https://github.com/Alejandrehl/kainext-binance-mcp@v1.2.1" kainext-binance-mcp-confirmer
+uvx --from "kainext-binance-mcp==1.2.1" kainext-binance-mcp-confirmer
+# or, from git instead of PyPI:
+# uvx --from "git+https://github.com/Alejandrehl/kainext-binance-mcp@v1.2.1" kainext-binance-mcp-confirmer
 ```
+
+> 🔒 **Always pass `--from`.** The confirmer is a command *inside* the `kainext-binance-mcp`
+> distribution — there is no PyPI project called `kainext-binance-mcp-confirmer`. A bare
+> `uvx kainext-binance-mcp-confirmer` asks PyPI for a project by that name, and anyone who
+> registers it would run their code in the one process that holds your trade key. Pinning the
+> version also means the confirmer never upgrades itself under you.
 
 It listens on a local Unix socket. When the AI proposes an order, a **native dialog** appears
 with the exact fields (symbol, side, type, effective quantity, price, `timeInForce`, estimated
@@ -296,9 +304,14 @@ daily close (completed candles only), funding rate, Fear & Greed:
 
 ```bash
 mkdir -p ~/.config/kainext-binance-mcp
-cp examples/watch.example.toml ~/.config/kainext-binance-mcp/watch.toml  # edit it
-kainext-binance-mcp-watch
+curl -fsSL -o ~/.config/kainext-binance-mcp/watch.toml \
+  https://raw.githubusercontent.com/Alejandrehl/kainext-binance-mcp/v1.2.1/examples/watch.example.toml
+# edit it, then:
+uvx --from "kainext-binance-mcp==1.2.1" kainext-binance-mcp-watch
 ```
+
+Same rule as the confirmer: `kainext-binance-mcp-watch` is a command of the
+`kainext-binance-mcp` distribution, so `uvx` always needs `--from`.
 
 ### Testnet-first (recommended)
 

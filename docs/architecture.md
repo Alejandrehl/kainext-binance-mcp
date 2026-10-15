@@ -34,7 +34,7 @@ a physical click. The model has neither.
 The research engine has no business touching credentials, and the guarantee above only
 holds if that stays true. So:
 
-- It reads **public archives** (`data.binance.vision`) over plain HTTP, with no API key.
+- It reads **public archives** (`data.binance.vision`) over unauthenticated HTTPS, with no API key.
 - It exposes **no MCP tools** — nothing about it reaches the model.
 - The server **lazy-imports** it, so a `uvx` install without the `[research]` extra starts
   normally even though `numpy` is absent.
