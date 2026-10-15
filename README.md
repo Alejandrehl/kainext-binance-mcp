@@ -360,7 +360,7 @@ gets you the same ruff check locally.
 
 See [`ROADMAP.md`](ROADMAP.md) for the full three-phase programme and its measured state.
 
-- ~~Migrate to MCP SDK 2.x~~ — **done**, `mcp[cli]==2.0.0`.
+- ~~Migrate to MCP SDK 2.x~~ — **done**, `mcp[cli]==2.2.0`.
 - ~~Exchange surfaces beyond spot~~ — **futures research shipped** (read-only, offline).
   Futures *execution* is deliberately out of scope: see [`SECURITY.md`](SECURITY.md).
 - Optional notification channels for proposal/execution events.

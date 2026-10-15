@@ -98,6 +98,9 @@ engine**, and the doctrine that governs it changed accordingly.
   the header said 25), the doctrine row that still said "never leverage", the macOS-only
   execution claim (false since v1.2), stale `@v1.0.0` install pins, `CONTRIBUTING`'s ruff
   command that did not match CI, and the `server.json` registry listing.
+- Dependency batch: `mcp[cli]` 2.0.0 → 2.2.0, `pydantic` 2.13.5, `pandas` 3.0.6, `numpy`
+  2.5.3, `ruff` 0.16.8 (pre-commit too), CodeQL Action v3 → v4. Verified together on one
+  branch rather than as six PRs tested against a stale `main`.
 
 ## [1.2.1] — 2026-08-22
 
